@@ -2,20 +2,22 @@
 TARGET = $(notdir $(CURDIR))
 
 # The teensy version to use, 30 or 31
-TEENSY = 30
+TEENSY = 31
 
 # Set to 24000000, 48000000, or 96000000 to set CPU core speed
-TEENSY_CORE_SPEED = 48000000
+TEENSY_CORE_SPEED = 96000000
 
 # Some libraries will require this to be defined
 # If you define this, you will break the default main.cpp
-#ARDUINO = 105
+ARDUINO = 105
 
 # configurable options
 OPTIONS = -DUSB_SERIAL -DLAYOUT_US_ENGLISH
 
 # directory to build in
 BUILDDIR = $(abspath $(CURDIR)/build)
+
+ARDUINO_PATH=/Applications/Arduino.app/Contents/Resources/Java
 
 #************************************************************************
 # Location of Teensyduino utilities, Toolchain, and Arduino Libraries.
@@ -31,12 +33,12 @@ ifeq ($(OS),Windows_NT)
 else
     UNAME_S := $(shell uname -s)
     ifeq ($(UNAME_S),Darwin)
-        TOOLSPATH = /Applications/Arduino.app/Contents/Resources/Java/hardware/tools/
+        TOOLSPATH = $(ARDUINO_PATH)/hardware/tools/
     endif
 endif
 
 # path location for Teensy 3 core
-COREPATH = /Applications/Arduino.app/Contents/Resources/Java/hardware/teensy/cores/teensy3/
+COREPATH = $(ARDUINO_PATH)/hardware/teensy/cores/teensy3
 
 # path location for Arduino libraries
 LIBRARYPATH = libraries
@@ -92,9 +94,9 @@ LC_FILES := $(wildcard $(LIBRARYPATH)/*/*.c)
 LCPP_FILES := $(wildcard $(LIBRARYPATH)/*/*.cpp)
 TC_FILES := $(wildcard $(COREPATH)/*.c)
 TCPP_FILES := $(wildcard $(COREPATH)/*.cpp)
-C_FILES := $(wildcard src/*.c)
-CPP_FILES := $(wildcard src/*.cpp)
-INO_FILES := $(wildcard src/*.ino)
+C_FILES := $(wildcard *.c)
+CPP_FILES := $(wildcard *.cpp)
+INO_FILES := $(wildcard *.ino)
 
 # include paths for libraries
 L_INC := $(foreach lib,$(filter %/, $(wildcard $(LIBRARYPATH)/*/)), -I$(lib))
