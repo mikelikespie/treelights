@@ -12,7 +12,7 @@ TEENSY_CORE_SPEED = 96000000
 ARDUINO = 105
 
 # configurable options
-OPTIONS = -DUSB_SERIAL -DLAYOUT_US_ENGLISH
+OPTIONS = -DUSB_SERIAL -DLAYOUT_US_ENGLISH -DTEENSYDUINO=120
 
 # directory to build in
 BUILDDIR = $(abspath $(CURDIR)/build)
@@ -51,7 +51,7 @@ COMPILERPATH = $(TOOLSPATH)/arm-none-eabi/bin
 #************************************************************************
 
 # CPPFLAGS = compiler options for C and C++
-CPPFLAGS = -Wall -g -Os -mcpu=cortex-m4 -mthumb -nostdlib -MMD $(OPTIONS) -DF_CPU=$(TEENSY_CORE_SPEED) -Isrc -I$(COREPATH)
+CPPFLAGS = -Wall -g -Os -mcpu=cortex-m4 -mthumb -nostdlib -MMD $(OPTIONS) -DF_CPU=$(TEENSY_CORE_SPEED) -I$(COREPATH) -I.
 
 # compiler options for C++ only
 CXXFLAGS = -std=gnu++0x -felide-constructors -fno-exceptions -fno-rtti
