@@ -37,6 +37,8 @@
     pin 1 - Output indicating CPU usage, monitor with an oscilloscope,
             logic analyzer or even an LED (brighter = CPU busier)
 */
+extern "C" int _kill(int pid, int sig) {return 0;}
+extern "C" int _getpid(void) { return 1;}
 
 #include <OctoWS2811.h>
 

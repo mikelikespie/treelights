@@ -8,8 +8,8 @@
 #=============================================================================#
 set(CMAKE_SYSTEM_NAME Arduino)
 
-set(CMAKE_C_COMPILER   avr-gcc)
-set(CMAKE_CXX_COMPILER avr-g++)
+#set(CMAKE_C_COMPILER   avr-gcc)
+#set(CMAKE_CXX_COMPILER avr-g++)
 
 # Add current directory to CMake Module path automatically
 if(EXISTS  ${CMAKE_CURRENT_LIST_DIR}/Platform/Arduino.cmake)
@@ -70,6 +70,7 @@ find_path(ARDUINO_SDK_PATH
           NAMES lib/version.txt
           PATH_SUFFIXES share/arduino
                         Arduino.app/Contents/Resources/Java/
+                        Arduino.app/Contents/Java/
                         ${ARDUINO_PATHS}
           HINTS ${SDK_PATH_HINTS}
           DOC "Arduino SDK path.")
@@ -81,3 +82,7 @@ else()
     message(FATAL_ERROR "Could not find Arduino SDK (set ARDUINO_SDK_PATH)!")
 endif()
 
+set(ARDUINO_CPUMENU)
+if(ARDUINO_CPU)
+    set(ARDUINO_CPUMENU ".menu.cpu.${ARDUINO_CPU}")
+endif(ARDUINO_CPU)

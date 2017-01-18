@@ -7,4 +7,5 @@ cmake_install.cmake
 *.d
 *.o
 treelights
+cmake-build-debug/ 
 
