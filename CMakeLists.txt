@@ -30,7 +30,7 @@ message(${TEENSY_BOARDS_PATH})
 
 
 
-set(SOURCE_FILES loop.cpp OctoWS2811.cpp)
+set(SOURCE_FILES loop.cpp)
 
 set(FastLED_SRCS libraries/FastLED/bitswap.cpp
 libraries/FastLED/colorpalettes.cpp
