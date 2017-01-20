@@ -1,66 +1,107 @@
-extern "C" int _kill(int pid, int sig) {return 0;}
-extern "C" int _getpid(void) { return 1;}
+extern "C" int _kill(int pid, int sig) { return 0; }
+extern "C" int _getpid(void) { return 1; }
+//extern "C" int _init(void) { return 1; }
 
 //#include <OctoWS2811.h>
 
-#include "nanoflann.hpp"
+//#include "FastLED.h"
+#include <SPI.h>
 
-const int ledsPerStrip = 150;
+//#include "nanoflann.hpp"
+//#include </Applications/Arduino.app/Contents/Java/hardware/teensy/avr/libraries/SPI/SPI.h>
+
+extern "C" uint32_t _ebss;
+
+uint32_t _ebss = 0;
+
+
+static const int NUM_LEDS = 5 * 60;
 
 inline static uint32_t h2rgb(unsigned int v1, unsigned int v2, unsigned int hue);
 
-extern "C" void loop() {
 
+void writeEndFrame(size_t ledCount);
+
+void writeStartFrame();
+
+struct ARGB {
+    uint8_t a;
+    // We actually only get 5 bits
+    uint8_t r, g, b;
+};
+
+inline void writeColor(const ARGB &color);
+
+static ARGB leds[NUM_LEDS];
+
+const int slaveSelectPin = 7;
+
+
+SPISettings APA102(24000000, MSBFIRST, SPI_MODE0);
+
+
+void setup() {
+    Serial.begin(115200);
+
+    // set the slaveSelectPin as an output:
+    pinMode(slaveSelectPin, OUTPUT);
+    // initialize SPI:
+    SPI.begin();
 }
 
-extern "C" void setup() {
+void writeBuffer() {
+    SPI.beginTransaction(APA102);
+    digitalWrite(slaveSelectPin, HIGH);  // enable access to LEDs
 
-}
 
+    writeStartFrame();
 
-// Convert HSL (Hue, Saturation, Lightness) to RGB (Red, Green, Blue)
-//
-//   hue:        0 to 359 - position on the color wheel, 0=red, 60=orange,
-//                            120=yellow, 180=green, 240=blue, 300=violet
-//
-//   saturation: 0 to 100 - how bright or dull the color, 100=full, 0=gray
-//
-//   lightness:  0 to 100 - how light the color is, 100=white, 50=color, 0=black
-//
-int makeColor(unsigned int hue, int saturation, unsigned int lightness)
-{
-    uint32_t red, green, blue;
-    unsigned int var1, var2;
-
-    if (hue > 359) hue = hue % 360;
-    if (saturation > 100) saturation = 100;
-    if (lightness > 100) lightness = 100;
-
-    // algorithm from: http://www.easyrgb.com/index.php?X=MATH&H=19#text19
-    if (saturation == 0) {
-        red = green = blue = lightness * 255 / 100;
-    } else {
-        if (lightness < 50) {
-            var2 = lightness * (100 + saturation);
-        } else {
-            var2 = ((lightness + saturation) * 100) - (saturation * lightness);
-        }
-        var1 = lightness * 200 - var2;
-        red = h2rgb(var1, var2, (hue < 240) ? hue + 120 : hue - 240) * 255 / static_cast<uint32_t>(600000);
-        green = h2rgb(var1, var2, hue) * 255 / static_cast<uint32_t>(600000);
-        blue = h2rgb(var1, var2, (hue >= 120) ? hue - 120 : hue + 240) * 255 / static_cast<uint32_t>(600000);
+    for (const auto &c : leds) {
+        writeColor(c);
     }
-    return (red << 16) | (green << 8) | blue;
+
+    writeEndFrame(NUM_LEDS);
+
+    digitalWrite(slaveSelectPin, LOW);
+    SPI.endTransaction();
 }
 
-uint32_t h2rgb(unsigned int v1, unsigned int v2, unsigned int hue)
-{
-    if (hue < 60) return v1 * 60 + (v2 - v1) * hue;
-    if (hue < 180) return v2 * 60;
-    if (hue < 240) return v1 * 60 + (v2 - v1) * (240 - hue);
-    return v1 * 60;
+int cnt = 0;
+void loop() {
+    for (auto &led : leds) {
+        led.a = 31;
+        led.b = 255;
+    }
+    cnt++;
+    if ((cnt % 10000) == 0) {
+        Serial.println("hi");
+
+    }
+    //   writeBuffer();
+//    delay(500);
 }
 
-// alternate code:
-// http://forum.pjrc.com/threads/16469-looking-for-ideas-on-generating-RGB-colors-from-accelerometer-gyroscope?p=37170&viewfull=1#post37170
+inline void writeColor(const ARGB &color) {
+    uint8_t brightness = 31;
+    if (color.a < 31) {
+        brightness = color.a;
+    }
+
+    SPI.transfer(0xE0 | brightness);
+    SPI.transfer(color.b);
+    SPI.transfer(color.g);
+    SPI.transfer(color.r);
+}
+
+void writeStartFrame() {
+    for (int i = 0; i < 4; i++) {
+        SPI.transfer(0x00);
+    }
+}
+
+void writeEndFrame(size_t ledCount) {
+    for (int i = 0; i < ledCount / 8 + 2; i++) {
+        SPI.transfer(0xFF);
+    }
+}
 

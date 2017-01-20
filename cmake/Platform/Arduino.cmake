@@ -841,8 +841,9 @@ function(get_arduino_flags COMPILE_FLAGS_VAR LINK_FLAGS_VAR BOARD_ID MANUAL)
 		 if(DEFINED ${BOARD_ID}.build.flags.common)
 			 set(COMPILE_FLAGS "${COMPILE_FLAGS} ${${BOARD_ID}.build.flags.common}")
 		 endif()
-		 if(DEFINED ${BOARD_ID}.build.flags.deps)
-			 set(COMPILE_FLAGS "${COMPILE_FLAGS} ${${BOARD_ID}.build.flags.deps}")
+
+		 if(DEFINED ${BOARD_ID}.build.flags.dep)
+			 set(COMPILE_FLAGS "${COMPILE_FLAGS} ${${BOARD_ID}.build.flags.dep}")
 		 endif()
 		 if(DEFINED ${BOARD_ID}.build.flags.cpu)
 			 set(COMPILE_FLAGS "${COMPILE_FLAGS} ${${BOARD_ID}.build.flags.cpu}")
@@ -863,17 +864,22 @@ function(get_arduino_flags COMPILE_FLAGS_VAR LINK_FLAGS_VAR BOARD_ID MANUAL)
 		set(LINK_FLAGS "")
 
 		 if(DEFINED ${BOARD_ID}.build.flags.ld)
-			 #set(LINK_FLAGS "${LINK_FLAGS} ${${BOARD_ID}.build.flags.ld}")
+             string(REPLACE "{extra.time.local}" 52711190 SUBSTITUTED_FLAGS "${${BOARD_ID}.build.flags.ld}")
+             string(REPLACE "{build.core.path}" "${${BOARD_CORE}.path}" SUBSTITUTED_FLAGS "${SUBSTITUTED_FLAGS}")
+			 set(LINK_FLAGS "${LINK_FLAGS} ${SUBSTITUTED_FLAGS}")
 		 endif()
 
 		 if(DEFINED ${BOARD_ID}.build.flags.libs)
-			 #set(LINK_FLAGS "${LINK_FLAGS} ${${BOARD_ID}.build.flags.libs}")
+			 set(LINK_FLAGS "${LINK_FLAGS} ${${BOARD_ID}.build.flags.libs}")
 		 endif()
 		 
 		 if(DEFINED ${BOARD_ID}.build.flags.common)
-			 # set(LINK_FLAGS "${LINK_FLAGS} ${${BOARD_ID}.build.flags.common}")
+#			  set(LINK_FLAGS "${LINK_FLAGS} ${${BOARD_ID}.build.flags.common}")
 		 endif()
-		
+             if(DEFINED ${BOARD_ID}.build.flags.cpu)
+			  set(LINK_FLAGS "${LINK_FLAGS} ${${BOARD_ID}.build.flags.cpu}")
+		 endif()
+
         if(ARDUINO_SDK_VERSION VERSION_GREATER 1.0 OR ARDUINO_SDK_VERSION VERSION_EQUAL 1.0)
             if(NOT MANUAL)
                 set(PIN_HEADER ${${${BOARD_ID}.build.variant}.path})
@@ -2206,7 +2212,7 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-Os -g       ${ARDUINO_CXX_FLAGS}" CACHE STR
 #=============================================================================#
 #                       Executable Linker Flags                               #
 #=============================================================================#
-set(ARDUINO_LINKER_FLAGS "-Wl,--gc-sections -lm")
+set(ARDUINO_LINKER_FLAGS "")
 set(CMAKE_EXE_LINKER_FLAGS                "${ARDUINO_LINKER_FLAGS}" CACHE STRING "")
 set(CMAKE_EXE_LINKER_FLAGS_DEBUG          "${ARDUINO_LINKER_FLAGS}" CACHE STRING "")
 set(CMAKE_EXE_LINKER_FLAGS_MINSIZEREL     "${ARDUINO_LINKER_FLAGS}" CACHE STRING "")
