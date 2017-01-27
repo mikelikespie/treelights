@@ -83,13 +83,13 @@ struct HCL {
         float g = std::min(g1 + m, 1.0f);
         float b = std::min(b1 + m, 1.0f);
 
-        float actual_l = r * r + g * g + b * b;
+//        float actual_l = r * r + g * g + b * b;
 
-        float multiple = l / sqrtf(actual_l);
-
-        r *= multiple;
-        g *= multiple;
-        b *= multiple;
+//        float multiple = l / sqrtf(actual_l);
+//
+//        r *= multiple;
+//        g *= multiple;
+//        b *= multiple;
 
         g = (g * 0.75) * (g * 0.75);
         r *= r;
@@ -109,10 +109,10 @@ struct HCL {
             float needed_mult = 1.0 / maxrgb;
             a = uint8_t(ceilf(31 / needed_mult));
 
-            float actual_mult = a / 31.0f;
-            r /= actual_mult;
-            g /= actual_mult;
-            b /= actual_mult;
+            float actual_mult = 31.0f / a;
+            r *= actual_mult;
+            g *= actual_mult;
+            b *= actual_mult;
         } else {
 //            a = 0;
         }

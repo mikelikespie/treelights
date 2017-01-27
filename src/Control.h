@@ -60,7 +60,7 @@ class BufferedControl : public ValueControl<float> {
             initialized = true;
         } else {
             // Otherwise we converge on computed value
-            _computedValue = (_computedValue - _actualValue) * .75f + _actualValue;
+            _computedValue = (_computedValue - _actualValue) * .9f + _actualValue;
         }
         ValueControl<float>::tick(clock, inputValue);
     }

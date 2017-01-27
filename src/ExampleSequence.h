@@ -32,9 +32,10 @@ public:
                 const Clock &clock)
     : SequenceBase<HSVSequence>::SequenceBase(stripCount, stripLength, clock) {
     }
-    
+
+
     inline ARGB colorForPixel(int strip, int pixel, const Context &context) {
-        return HCL { _hControl.value(), _sControl.value(), _vControl.value() };
+        return HCL { std::max(0.0f, std::min(1.0f, fabsf(fmodf(_hControl.value(), 1.0)))), std::max(0.0f, std::min(1.0f, _sControl.value())), std::max(0.0f, std::min(1.0f, _vControl.value())) };
     }
     
     virtual const std::vector<Control *> &controls() {
@@ -58,7 +59,7 @@ public:
     }
     
     inline ARGB colorForPixel(int strip, int pixel, const Context &context) {
-        return ARGB { 8, _rControl.value(), _gControl.value(), _bControl.value() };
+        return ARGB { 8, _rControl.value() * 255, _gControl.value() * 255, _bControl.value() * 255 };
     }
     
     virtual const std::vector<Control *> &controls() {

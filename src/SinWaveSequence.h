@@ -12,7 +12,8 @@
 
 #include <math.h>
 
-typedef BufferedControl<LinearlyInterpolatedValueControl<float>> SmoothLinearControl;
+//typedef BufferedControl<LinearlyInterpolatedValueControl<float>> SmoothLinearControl;
+typedef LinearlyInterpolatedValueControl<float> SmoothLinearControl;
 
 typedef AccumulatorControl<SmoothLinearControl> SmoothAccumulatorControl;
 
@@ -65,7 +66,7 @@ public:
         }
 
 
-        return HCL { hue, 1, v };
+        return HCL { hue, 1, v * 0.2 + 0.05 };
 //        return ARGB { 8, 255, 0, 0 };
     }
 
@@ -74,14 +75,14 @@ public:
         return _controls;
     }
 private:
-    SmoothAccumulatorControl _lightnessPhase = SmoothAccumulatorControl(1.0, 40.0); // This should probably be an accumulator
-    SmoothAccumulatorControl _colorPhase = SmoothAccumulatorControl(0.0, 0.125);
-    SmoothAccumulatorControl _hueSlicePhase = SmoothAccumulatorControl(0.0, 0.25);
+    SmoothAccumulatorControl _lightnessPhase = SmoothAccumulatorControl(-500.0, 500.0); // This should probably be an accumulator
+    SmoothAccumulatorControl _colorPhase = SmoothAccumulatorControl(-500.0, 500.0);
+    SmoothAccumulatorControl _hueSlicePhase = SmoothAccumulatorControl(0.0, 0.035);
 
-    SmoothLinearControl _wavelength = SmoothLinearControl(4, 60);
-    SmoothLinearControl _colorWavelength = SmoothLinearControl(4, 120);
+    SmoothLinearControl _wavelength = SmoothLinearControl(4, 32);
+    SmoothLinearControl _colorWavelength = SmoothLinearControl(4, 43);
     SmoothLinearControl _centerOfWaveControl = SmoothLinearControl(-stripLength(), 0);
-    SmoothLinearControl _hueSliceSizeControl = SmoothLinearControl(0.0, 0.25);
+    SmoothLinearControl _hueSliceSizeControl = SmoothLinearControl(0.0, 0.33);
     SmoothLinearControl _saturationControl = SmoothLinearControl(1, 1);
     
     float _hueSliceMin = 0;

@@ -34,7 +34,7 @@ const std::vector<Control *> *currentControls = nullptr;
 
 IdentityValueControl brightnessControl;
 
-static const int NUM_LEDS = 5 * 60;
+static const int NUM_LEDS = 1 * 60;
 
 const int stripCount = 1;
 const int stripLength = NUM_LEDS;
@@ -43,11 +43,13 @@ ExampleSequence exampleSequence(stripCount, stripLength, sharedClock, HCL { 1, 0
 ExampleSequence exampleSequence2(stripCount, stripLength, sharedClock, HCL { 0.5f, 0.5f, 0.5f });
 
 SinWaveSequence sinWaveSequence(stripCount, stripLength, sharedClock);
+SinWaveSequence sinWaveSequence2(stripCount, stripLength, sharedClock);
 HSVSequence hsvSequence(stripCount, stripLength, sharedClock);
 RGBSequence rgbSequence(stripCount, stripLength, sharedClock);
 
-Sequence *sequences[] = {
+std::vector<Sequence *>sequences = {
         &sinWaveSequence,
+        &sinWaveSequence2,
         &hsvSequence,
         &rgbSequence,
         &exampleSequence,
@@ -86,7 +88,7 @@ void setup() {
 
 
     imu.begin();
-    filter.begin(100);
+    filter.begin(10);
 
     // set the slaveSelectPin as an output:
     pinMode(slaveSelectPin, OUTPUT);
@@ -135,27 +137,54 @@ int imu_cnt = 0;
 
 int idx = 0;
 float ax, ay, az;
+float max_a_magnitude = 0;
 float gx, gy, gz;
 float mx, my, mz;
 float roll = 0, pitch = 0, heading = 0;
 
+boolean coolingDownCycle = false;
+
+const float shockLowWatermark = 1.5;
+const float shockHighWatermark = 2.0;
 void loop() {
     sharedClock.tick();
+
+    boolean shockTriggered = false;
+    if (max_a_magnitude > shockHighWatermark ) {
+        if (!coolingDownCycle) {
+            shockTriggered = true;
+            coolingDownCycle = true;
+        }
+    } else if (max_a_magnitude < shockLowWatermark && coolingDownCycle) {
+        coolingDownCycle = false;
+    }
 
     brightnessControl.tick(sharedClock, 0);
     visualizationControl.tick(sharedClock, 0);
 
-    int newSequenceIndex = visualizationControl.value();
+//    int newSequenceIndex = visualizationControl.value();
+
+    int newSequenceIndex = std::max(0, (int)(shockTriggered ? (currentSequenceIndex + 1) % sequences.size() : currentSequenceIndex));
 
     if (newSequenceIndex != currentSequenceIndex) {
+        Serial.print("Switching sequence to ");
+        Serial.print(newSequenceIndex);
+        Serial.println(".");
+
         currentSequenceIndex = newSequenceIndex;
         currentSequence = sequences[currentSequenceIndex];
+
         currentSequence->initialize();
+        Serial.println("Initialized");
         currentControls = &currentSequence->controls();
     }
 
+
     auto iter = currentControls->begin();
-    for (int i = 0; i < 16 && iter != currentControls->end(); ++i){
+    if (iter != currentControls->end()) {
+
+        ++iter;
+        for (int i = 0; i < 16 && iter != currentControls->end(); ++i) {
 //        switch (i) {
 //                // These are reserved
 //            case 0:
@@ -165,9 +194,12 @@ void loop() {
 //                break;
 //        }
 
-        (*iter)->tick(sharedClock, 0.5);
-        ++iter;
+            (*iter)->tick(sharedClock, 0.5);
+            ++iter;
+        }
+        (*currentControls)[0]->tick(sharedClock, -ax + 0.5);
     }
+
 
     if (imu.available()) {
         // Read the motion sensors
@@ -181,13 +213,32 @@ void loop() {
         pitch = filter.getPitch();
         heading = filter.getYaw();
 
-        if (imu_cnt % 1000 == 0) {
-            Serial.print("Orientation: ");
-            Serial.print(heading);
-            Serial.print(" ");
-            Serial.print(pitch);
-            Serial.print(" ");
-            Serial.println(roll);
+        float g_magnitude = sqrtf(gx * gx + gy * gy + gz * gz);
+        float a_magnitude = sqrtf(ax * ax + ay * ay + az * az);
+
+        max_a_magnitude *= 0.99;
+        max_a_magnitude = std::max(max_a_magnitude, a_magnitude);
+
+        if (imu_cnt % 100 == 0) {
+            Serial.print("Orientation: ax");
+            Serial.print(ax);
+            Serial.print(" ay:");
+            Serial.print(ay);
+            Serial.print(" az:");
+            Serial.print(az);
+            Serial.printf(" a_magnitude:");
+            Serial.print(a_magnitude);
+            Serial.printf(" max_a_magnitude:");
+            Serial.print(max_a_magnitude);
+
+            Serial.print(" gx:");
+            Serial.print(gx);
+            Serial.print(" gy:");
+            Serial.print(gy);
+            Serial.print(" gz:");
+            Serial.print(gz);
+
+            Serial.println("");
         }
 
         imu_cnt++;
