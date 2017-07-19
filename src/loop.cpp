@@ -44,12 +44,12 @@ const std::vector<Control *> *currentControls = nullptr;
 
 IdentityValueControl brightnessControl;
 
-ExampleSequence exampleSequence(stripCount, stripLength, sharedClock, HCL(255, 0, 255));
-ExampleSequence exampleSequence2(stripCount, stripLength, sharedClock, HCL(127, 127, 127));
+ExampleSequence exampleSequence(stripLength, sharedClock, HCL(255, 0, 255));
+ExampleSequence exampleSequence2(stripLength, sharedClock, HCL(127, 127, 127));
 
-SinWaveSequence sinWaveSequence(stripCount, stripLength, sharedClock);
-HSVSequence hsvSequence(stripCount, stripLength, sharedClock);
-RGBSequence rgbSequence(stripCount, stripLength, sharedClock);
+SinWaveSequence sinWaveSequence(stripLength, sharedClock);
+HSVSequence hsvSequence(stripLength, sharedClock);
+RGBSequence rgbSequence(stripLength, sharedClock);
 
 Sequence *sequences[] = {
     &hsvSequence,

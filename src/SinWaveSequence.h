@@ -13,11 +13,6 @@
 #include <math.h>
 
 //typedef BufferedControl<LinearlyInterpolatedValueControl<float>> SmoothLinearControl;
-typedef LinearlyInterpolatedValueControl<float> SmoothLinearControl;
-
-typedef AccumulatorControl<SmoothLinearControl> SmoothAccumulatorControl;
-
-
 inline float sawtooth(float x) {
     return fabsf((roundf(x) - x)) * 2;
 }
@@ -26,8 +21,8 @@ class SinWaveSequence : public SequenceBase<SinWaveSequence> {
 
 
 public:
-    SinWaveSequence(int stripCount, int stripLength, const Clock &clock)
-            : SequenceBase(stripCount, stripLength,
+    SinWaveSequence(int stripLength, const Clock &clock)
+            : SequenceBase(stripLength,
                            clock) { }
 
     virtual void loop(Context *context) {
@@ -42,19 +37,28 @@ public:
         _hueSlicePhase.truncate(1.0);
     }
 
-    inline ARGB colorForPixel(int strip, int pixel, const Context &context) {
+    inline ARGB colorForPixel(int pixel, const Context &context) {
         float sinOffsetBase = (pixel + _centerOfWaveControl.value()) * M_TWOPI / _wavelength.value();
 
         float sinOffsetV = sinOffsetBase +  _lightnessPhase.value() / _wavelength.value();
-        float v = (sinf(sinOffsetV) + 1) * 0.5f;
-        
+//        float v = (sinf(sinOffsetV) + 1) * 0.5f;
+        float v = sawtooth(sinOffsetV / M_TWOPI);
+        v *= v;
 
         float sinOffsetBaseH = (pixel + _centerOfWaveControl.value()) * M_TWOPI / _colorWavelength.value();
 
         float sinOffsetH = sinOffsetBaseH + _colorPhase.value() / _colorWavelength.value();
 
         float sinOffsetAdjustedH = sinOffsetH / M_TWOPI;
-        
+
+        float hue = calculateHue(sinOffsetAdjustedH);
+
+
+        return ((RGBLinear)(HSV { hue, 1.0, v * 0.2f })).convertWithJitter(generator);
+//        return ARGB { 8, 255, 0, 0 };
+    }
+
+    float calculateHue(float sinOffsetAdjustedH) const {
         float hue = (sawtooth(sinOffsetAdjustedH)) * (_hueSliceMax - _hueSliceMin) + _hueSliceMin;
 
 //        float hue = _hueSliceMin;
@@ -64,10 +68,7 @@ public:
         } else {
             hue = fmodf(hue, 1.0);
         }
-
-
-        return HCL { hue, 1, v * 0.2 + 0.05 };
-//        return ARGB { 8, 255, 0, 0 };
+        return hue;
     }
 
 
@@ -75,11 +76,12 @@ public:
         return _controls;
     }
 private:
-    SmoothAccumulatorControl _lightnessPhase = SmoothAccumulatorControl(-500.0, 500.0); // This should probably be an accumulator
+    SmoothAccumulatorControl _lightnessPhase = SmoothAccumulatorControl(-525.0, 500.0); // This should probably be an accumulator
     SmoothAccumulatorControl _colorPhase = SmoothAccumulatorControl(-500.0, 500.0);
     SmoothAccumulatorControl _hueSlicePhase = SmoothAccumulatorControl(0.0, 0.035);
 
-    SmoothLinearControl _wavelength = SmoothLinearControl(4, 32);
+    std::mt19937 generator = std::mt19937(0);
+    SmoothLinearControl _wavelength = SmoothLinearControl(0, 18);
     SmoothLinearControl _colorWavelength = SmoothLinearControl(4, 43);
     SmoothLinearControl _centerOfWaveControl = SmoothLinearControl(-stripLength(), 0);
     SmoothLinearControl _hueSliceSizeControl = SmoothLinearControl(0.0, 0.33);

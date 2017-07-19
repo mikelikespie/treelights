@@ -151,4 +151,7 @@ private:
 template class LinearlyInterpolatedValueControl<int>;
 template class LinearlyInterpolatedValueControl<float>;
 
+typedef LinearlyInterpolatedValueControl<float> SmoothLinearControl;
+typedef AccumulatorControl<SmoothLinearControl> SmoothAccumulatorControl;
+
 #endif //TREELIGHTS_CONTROL_H
