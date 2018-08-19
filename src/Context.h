@@ -7,14 +7,18 @@
 /// What you use to draw
 class Context {
 public:
-    Context(ARGB *leds, int stripLength, int stripCount) :
+    Context(ARGB *leds, int stripLength, bool reverse) :
     _leds(leds),
-    _stripLength(stripLength),
-    _stripCount(stripCount) {
+    _reverse(reverse),
+    _stripLength(stripLength) {
     }
     
-    inline void setColor(int strip, int pixel, ARGB color) {
-        _leds[strip * _stripLength + pixel] = color;
+    inline void setColor(int pixel, ARGB color) {
+        if (_reverse) {
+            _leds[_stripLength - pixel - 1] = color;
+        } else {
+            _leds[pixel] = color;
+        }
     }
 
     Context() = delete;
@@ -22,8 +26,8 @@ public:
 private:
     ARGB *_leds;
 
+    bool _reverse;
     int _stripLength;
-    int _stripCount;
 };
 
 #endif

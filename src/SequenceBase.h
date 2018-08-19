@@ -13,11 +13,11 @@ public:
 
     virtual void initialize() {
     }
-    
+
     /// You should return your controls here. Default implementation is empty vector
     virtual const std::vector<Control *> &controls() {
-        static const std::vector<Control *> emptyImplementation {};
-        
+        static const std::vector<Control *> emptyImplementation{};
+
         return emptyImplementation;
     }
 };
@@ -26,45 +26,29 @@ public:
 template<class T>
 class SequenceBase : public Sequence {
 public:
-    SequenceBase(int stripCount, int stripLength, const Clock &clock)
-            :  _clock(clock), _stripCount(stripCount), _stripLength(stripLength) {
-                
+    SequenceBase(int stripLength, const Clock &clock)
+            : _clock(clock), _stripLength(stripLength) {
+
     }
 
     virtual void loop(Context *context) {
-        bool repeatStrips = this->repeatStrips();
-        int numLoops = repeatStrips ? 1 : _stripCount;
-        for (int strip = 0; strip < numLoops; ++strip) {
-            for (int pixel = 0; pixel < _stripLength; ++pixel) {
-                ARGB c = static_cast<T *>(this)->colorForPixel(strip, pixel, *context);
-                if (repeatStrips) {
-                    for (int i = 0; i < _stripCount; i++) {
-                        context->setColor(i, pixel, c);
-                    }
-                } else {
-                    context->setColor(strip, pixel, c);
-                }
-            }
+        for (int pixel = 0; pixel < _stripLength; ++pixel) {
+            ARGB c = static_cast<T *>(this)->colorForPixel(pixel, *context);
+            context->setColor(pixel, c);
         }
     };
-    
-    int stripCount() {
-        return _stripCount;
-    }
-    
+
     int stripLength() {
         return _stripLength;
     }
-    
-    
-    // If this is true, we'll only calculate for 1 strip and repeat it on all 8. This is an optimization
-    virtual bool repeatStrips() {
-        return false;
+
+
+    const Clock &clock() {
+        return _clock;
     }
-    
+
 private:
     const Clock &_clock;
-    const int _stripCount;
     const int _stripLength;
 };
 

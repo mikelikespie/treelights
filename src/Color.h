@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <cmath>
 #include <algorithm>
+#include <random>
 #include <core_pins.h>
 #include <usb_serial.h>
 
@@ -17,29 +18,44 @@ struct ARGB {
     uint8_t r, g, b;
 };
 
+template <typename Generator>
+inline ARGB adjustLinearFloatColor(float r, float g, float b, Generator *rnd = nullptr);
 
-// These are all 0-1
-struct HCL {
-    float h;
-    float c;
-    float l;
+
+
+template  <typename Generator>
+uint8_t convertTo8bitWithJitter(float c, Generator *rnd) ;
+
+struct RGBLinear {
+    float r, g, b;
 
     operator const ARGB() const {
-//
-//        if (Serial) {
-//            Serial.print(h);
-//            Serial.print(", ");
-//            Serial.print(c);
-//            Serial.print(", ");
-//            Serial.println(h);
-//        }
+        return adjustLinearFloatColor<std::mt19937>(r, g, b, nullptr);
+    }
 
-//        return ARGB { 8, 255, 0, 0 };
+    template <typename Generator>
+    inline ARGB convertWithJitter(Generator &rnd) const {
+        return adjustLinearFloatColor(r, g, b, &rnd);
+    }
+};
 
-        // quadrant is [0,6)
-        // TODO support negative hues if we have to
+struct RGBLog {
+    float r, g, b;
 
-        float c = l * this->c;
+    inline operator const RGBLinear() const {
+        return RGBLinear { r * r, g * g, b * b };
+    }
+};
+
+
+// These are all 0-1
+struct HSV {
+    float h;
+    float s;
+    float v;
+
+    inline operator const RGBLinear() const {
+        float c = v * this->s;
 
         float h_prime = std::min(1.0f, std::max(0.0f, h)) * 6;
 
@@ -77,48 +93,80 @@ struct HCL {
                 break;
         }
 
-        float m = l - c;
+        float m = v - c;
 
         float r = std::min(r1 + m, 1.0f);
         float g = std::min(g1 + m, 1.0f);
         float b = std::min(b1 + m, 1.0f);
 
-//        float actual_l = r * r + g * g + b * b;
+        return (RGBLinear)RGBLog {r, g, b};
+    };
 
-//        float multiple = l / sqrtf(actual_l);
-//
-//        r *= multiple;
-//        g *= multiple;
-//        b *= multiple;
-
-        g = (g * 0.75) * (g * 0.75);
-        r *= r;
-        b *= b;
-
-        const  float threshold = 2;
-
-        uint8_t a = 31;
-        float maxrgb = std::max(std::max(r, g), b);
-
-        if (maxrgb < threshold) {
-            if (maxrgb == 0) {
-                return ARGB {0, 0, 0, 0};
-            }
-
-//            float multiple = std::min(floor(maxrgb / (256 * 32), 32);
-            float needed_mult = 1.0 / maxrgb;
-            a = uint8_t(ceilf(31 / needed_mult));
-
-            float actual_mult = 31.0f / a;
-            r *= actual_mult;
-            g *= actual_mult;
-            b *= actual_mult;
-        } else {
-//            a = 0;
-        }
-        return ARGB {a, uint8_t(roundf(r * 255.0)), uint8_t(roundf(g * 255.0)), uint8_t(roundf(b * 255.0))};
-
+    operator const ARGB() const {
+        return (RGBLinear) (*this);
     }
 };
+
+//static const float _gamma = 2.4f;
+//static const float _invGamma= 2.4f;
+
+
+template <typename Generator>
+inline ARGB adjustLinearFloatColor(float r, float g, float b, Generator *rnd) {
+    const float threshold = 2;
+
+    uint8_t a = 31;
+    float maxrgb = std::max(std::max(r, g), b);
+
+    if (maxrgb < threshold) {
+        if (maxrgb == 0) {
+            return ARGB {0, 0, 0, 0};
+        }
+
+        float needed_mult = 1.0f / maxrgb;
+        a = uint8_t(roundf(31 / needed_mult));
+        if (a == 0) {
+            a = 1;
+        }
+
+        float actual_mult = 31.0f / a;
+        r *= actual_mult;
+        g *= actual_mult;
+        b *= actual_mult;
+    } else {
+//            a = 0;
+    }
+    if (rnd == nullptr) {
+        return ARGB {a, uint8_t(roundf(r * 255.0f)), uint8_t(roundf(g * 255.0f)), uint8_t(roundf(b * 255.0f))};
+    } else {
+        return ARGB {a,
+                     convertTo8bitWithJitter(r, rnd),
+                     convertTo8bitWithJitter(g, rnd),
+                     convertTo8bitWithJitter(b, rnd)
+        };
+    }
+}
+
+
+const float ditherThreshold = 8;
+template <typename Generator>
+inline uint8_t convertTo8bitWithJitter(float c, Generator *rnd) {
+
+    c *= 255.0f;
+
+    if (c <= 0.005) {
+        return 0;
+    }
+
+    if (c > ditherThreshold) {
+        return uint8_t(roundf(std::min(c, 255.0f)));
+    }
+
+    float probablilityToFloor = c - floorf(c);
+    std::uniform_real_distribution<float> dist(0.0, 1.0);
+    bool shouldFloor = dist(*rnd) > probablilityToFloor;
+
+    return (uint8_t)std::min(shouldFloor ? c : ceilf(c), 255.0f);
+}
 
 #endif //TREELIGHTS_COLOR_H_H

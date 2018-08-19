@@ -37,9 +37,18 @@ message(${TEENSY_BOARDS_PATH})
 set(SOURCE_FILES
         src/Control.cpp
         src/ExampleSequence.cpp
-        src/SinWaveSequence.cpp
         src/clock.cpp
-        src/loop2.cpp
+        )
+
+set(HEADER_FILES
+        src/Color.h
+        src/Context.h
+        src/Control.h
+        src/ExampleSequence.h
+        src/ParticleEffectSequence.h
+        src/SequenceBase.h
+        src/SinWaveSequence.h
+        src/clock.h
         )
 
 set(SPI_INCLUDES ${ARDUINO_SDK_PATH}/hardware/teensy/avr/libraries/SPI)
@@ -89,7 +98,16 @@ set(treelights_INCLUDES
 
 generate_arduino_firmware(treelights
     PROGRAMMER usbtinyisp
-    SRCS ${SOURCE_FILES}
+    SRCS ${SOURCE_FILES} src/loop2.cpp
+    HDRS ${HEADER_FILES}
+    BOARD teensy36
+    LIBS SPI Wire NXPMotionSense
+    )
+
+generate_arduino_firmware(ball
+    PROGRAMMER usbtinyisp
+    SRCS ${SOURCE_FILES}  src/ballloop.cpp
+    HDRS ${HEADER_FILES}
     BOARD teensy36
     LIBS SPI Wire NXPMotionSense
     )

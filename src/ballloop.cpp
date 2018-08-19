@@ -30,11 +30,15 @@ uint32_t _ebss = 0;
 Clock sharedClock;
 
 
-const int stripCount = 4;
+const int stripCount = 1;
 int currentSequenceIndex = -1;
 unique_ptr<Sequence> currentSequences[stripCount];
 
-static const int NUM_LEDS = 90 * 4;
+static const int segmentLength = 18;
+static const int segmentCount = 30;
+static const int ledCount =  segmentLength * segmentCount;
+
+static const int NUM_LEDS = ledCount;
 
 const int stripLength = NUM_LEDS;
 
@@ -50,7 +54,7 @@ HSVSequence hsvSequence(stripLength, sharedClock);
 RGBSequence rgbSequence(stripLength, sharedClock);
 
 std::vector<Sequence *(*)()>sequences = {
-        [&]()-> Sequence *{ return new ParticleEffectSequence(&gen, realStripLength, sharedClock); },
+        [&]()-> Sequence *{ return new SinWaveSequence(ledCount, sharedClock); },
 };
 
 const int SequenceBasesCount = sizeof(sequences)/sizeof(Sequence *);
@@ -68,17 +72,17 @@ inline void writeColor(const ARGB &color);
 void delayStart();
 
 vector<Context> contexts {
-        Context(leds + realStripLength * 0, realStripLength, true),
-        Context(leds + realStripLength * 1, realStripLength, false),
-        Context(leds + realStripLength * 2, realStripLength, true),
-        Context(leds + realStripLength * 3, realStripLength, false)
+        Context(leds, stripLength, false),
+//        Context(leds + realStripLength * 1, realStripLength, false),
+//        Context(leds + realStripLength * 2, realStripLength, true),
+//        Context(leds + realStripLength * 3, realStripLength, false)
 
 }
         ;
 
 const int slaveSelectPin = 7;
 
-SPISettings APA102(1000000, MSBFIRST, SPI_MODE0);
+SPISettings APA102(2200000, MSBFIRST, SPI_MODE0);
 
 NXPMotionSense imu;
 NXPSensorFusion filter;
@@ -128,7 +132,6 @@ void writeBuffer() {
     writeEndFrame(NUM_LEDS);
 
     SPI.endTransaction();
-//    digitalWrite(slaveSelectPin, LOW);
 }
 
 int cnt = 0;
@@ -185,13 +188,12 @@ void loop() {
 
         auto iter = currentControls->begin();
         if (currentControls->size()) {
-            ++iter;
+//            ++iter;
             for (int i = 0; i < 16 && iter != currentControls->end(); ++i) {
                 (*iter)->tick(sharedClock, 0.5);
                 ++iter;
             }
-
-            (*currentControls)[0]->tick(sharedClock, -ax + 0.5);
+    //            (*currentControls)[0]->tick(sharedClock, -ax + 0.5);
         }
 
         currentSequence->loop(&contexts[contextIndex]);
@@ -199,48 +201,48 @@ void loop() {
     }
 
 
-    if (imu.available()) {
-        // Read the motion sensors
-        imu.readMotionSensor(ax, ay, az, gx, gy, gz, mx, my, mz);
-
-        // Update the SensorFusion filter
-        filter.update(gx, gy, gz, ax, ay, az, mx, my, mz);
-
-        // print the heading, pitch and roll
-        roll = filter.getRoll();
-        pitch = filter.getPitch();
-        heading = filter.getYaw();
-
-//        float g_magnitude = sqrtf(gx * gx + gy * gy + gz * gz);
-        float a_magnitude = sqrtf(ax * ax + ay * ay + az * az);
-
-        max_a_magnitude *= 0.99;
-        max_a_magnitude = std::max(max_a_magnitude, a_magnitude);
-
-        if (imu_cnt % 100 == 0) {
-            Serial.print("Orientation: ax");
-            Serial.print(ax);
-            Serial.print(" ay:");
-            Serial.print(ay);
-            Serial.print(" az:");
-            Serial.print(az);
-            Serial.printf(" a_magnitude:");
-            Serial.print(a_magnitude);
-            Serial.printf(" max_a_magnitude:");
-            Serial.print(max_a_magnitude);
-
-            Serial.print(" gx:");
-            Serial.print(gx);
-            Serial.print(" gy:");
-            Serial.print(gy);
-            Serial.print(" gz:");
-            Serial.print(gz);
-
-            Serial.println("");
-        }
-
-        imu_cnt++;
-    }
+//    if (imu.available()) {
+//        // Read the motion sensors
+//        imu.readMotionSensor(ax, ay, az, gx, gy, gz, mx, my, mz);
+//
+//        // Update the SensorFusion filter
+//        filter.update(gx, gy, gz, ax, ay, az, mx, my, mz);
+//
+//        // print the heading, pitch and roll
+//        roll = filter.getRoll();
+//        pitch = filter.getPitch();
+//        heading = filter.getYaw();
+//
+////        float g_magnitude = sqrtf(gx * gx + gy * gy + gz * gz);
+//        float a_magnitude = sqrtf(ax * ax + ay * ay + az * az);
+//
+//        max_a_magnitude *= 0.99;
+//        max_a_magnitude = std::max(max_a_magnitude, a_magnitude);
+//
+//        if (imu_cnt % 100 == 0) {
+//            Serial.print("Orientation: ax");
+//            Serial.print(ax);
+//            Serial.print(" ay:");
+//            Serial.print(ay);
+//            Serial.print(" az:");
+//            Serial.print(az);
+//            Serial.printf(" a_magnitude:");
+//            Serial.print(a_magnitude);
+//            Serial.printf(" max_a_magnitude:");
+//            Serial.print(max_a_magnitude);
+//
+//            Serial.print(" gx:");
+//            Serial.print(gx);
+//            Serial.print(" gy:");
+//            Serial.print(gy);
+//            Serial.print(" gz:");
+//            Serial.print(gz);
+//
+//            Serial.println("");
+//        }
+//
+//        imu_cnt++;
+//    }
 
 
 
@@ -266,7 +268,7 @@ void writeStartFrame() {
 }
 
 void writeEndFrame(size_t ledCount) {
-    for (size_t i = 0; i < ledCount / 8 + 2; i++) {
+    for (size_t i = 0; i < 4; i++) {
         SPI.transfer(0xFF);
     }
 }
