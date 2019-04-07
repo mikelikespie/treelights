@@ -1,7 +1,7 @@
 
 set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/cmake/ArduinoToolchain.cmake)
 
-set(ARDUINO_DEFAULT_BOARD teensy36)
+set(ARDUINO_DEFAULT_BOARD teensy35)
 
 cmake_minimum_required(VERSION 2.8.4)
 
@@ -16,8 +16,9 @@ set(CMAKE_CXX_COMPILER /Applications/Arduino.app/Contents/Java/hardware/tools/ar
 set(CMAKE_C_COMPILER_WORKS 1)
 set(CMAKE_CXX_COMPILER_WORKS 1)
 
-set(FCPU 180000000)
+set(FCPU 120000000)
 set(EXTRA_INCLUDES "-I${ARDUINO_SDK_PATH}/hardware/teensy/avr/libraries/SPI \
+        -I${ARDUINO_SDK_PATH}/hardware/teensy/avr/libraries/RF24 \
         -I${ARDUINO_SDK_PATH}/hardware/teensy/avr/libraries/Wire \
         -I${ARDUINO_SDK_PATH}/hardware/teensy/avr/libraries/EEPROM \
         -I${ARDUINO_SDK_PATH}/hardware/teensy/avr/libraries/NXPMotionSense")
@@ -56,7 +57,7 @@ set(SPI_SRCS     ${ARDUINO_SDK_PATH}/hardware/teensy/avr/libraries/SPI/SPI.cpp)
 set(SPI_HDRS     ${ARDUINO_SDK_PATH}/hardware/teensy/avr/libraries/SPI/SPI.h)
 
 generate_arduino_library(SPI
-        BOARD teensy36)
+        BOARD teensy35)
 
 set(NXPMotionSense_INCLUDES ${ARDUINO_SDK_PATH}/hardware/teensy/avr/libraries/NXPMotionSense)
 set(NXPMotionSense_SRCS
@@ -66,7 +67,7 @@ set(NXPMotionSense_SRCS
         )
 set(NXPMotionSense_HDRS ${ARDUINO_SDK_PATH}/hardware/teensy/avr/libraries/NXPMotionSense/NXPMotionSense.h)
 generate_arduino_library(NXPMotionSense
-        BOARD teensy36
+        BOARD teensy35
         LIBS Wire EEPROM)
 
 set(EEPROM_INCLUDES ${ARDUINO_SDK_PATH}/hardware/teensy/avr/libraries/EEPROM)
@@ -75,8 +76,17 @@ set(EEPROM_SRCS
         )
 set(EEPROM_HDRS ${ARDUINO_SDK_PATH}/hardware/teensy/avr/libraries/EEPROM/EEPROM.h)
 generate_arduino_library(EEPROM
-        BOARD teensy36
+        BOARD teensy35
         LIBS Wire)
+
+set(RF24_INCLUDES .)
+set(RF24_SRCS
+        RF24/RF24.cpp
+        )
+set(RF24_HDRS RF24/RF24.h)
+generate_arduino_library(RF24
+        BOARD teensy35
+        )
 
 set(Wire_INCLUDES ${ARDUINO_SDK_PATH}/hardware/teensy/avr/libraries/Wire)
 set(Wire_SRCS
@@ -87,7 +97,7 @@ set(Wire_HDRS ${ARDUINO_SDK_PATH}/hardware/teensy/avr/libraries/Wire/Wire.h
         ${ARDUINO_SDK_PATH}/hardware/teensy/avr/libraries/Wire/utility/twi.h)
 
 generate_arduino_library(Wire
-        BOARD teensy36)
+        BOARD teensy35)
 
 set(treelights_INCLUDES
         libraries/FastLED
@@ -100,7 +110,7 @@ generate_arduino_firmware(treelights
     PROGRAMMER usbtinyisp
     SRCS ${SOURCE_FILES} src/loop2.cpp
     HDRS ${HEADER_FILES}
-    BOARD teensy36
+    BOARD teensy35
     LIBS SPI Wire NXPMotionSense
     )
 
@@ -108,6 +118,6 @@ generate_arduino_firmware(ball
     PROGRAMMER usbtinyisp
     SRCS ${SOURCE_FILES}  src/ballloop.cpp
     HDRS ${HEADER_FILES}
-    BOARD teensy36
-    LIBS SPI Wire NXPMotionSense
+    BOARD teensy35
+    LIBS SPI Wire NXPMotionSense RF24
     )

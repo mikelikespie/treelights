@@ -78,13 +78,13 @@ public:
 private:
     SmoothAccumulatorControl _lightnessPhase = SmoothAccumulatorControl(-525.0, 500.0); // This should probably be an accumulator
     SmoothAccumulatorControl _colorPhase = SmoothAccumulatorControl(-500.0, 500.0);
-    SmoothAccumulatorControl _hueSlicePhase = SmoothAccumulatorControl(0.0, 0.035);
+    SmoothAccumulatorControl _hueSlicePhase = SmoothAccumulatorControl(0.0001, 0.035);
 
     std::mt19937 generator = std::mt19937(0);
-    SmoothLinearControl _wavelength = SmoothLinearControl(0, 18);
+    SmoothLinearControl _wavelength = SmoothLinearControl(1, 18);
     SmoothLinearControl _colorWavelength = SmoothLinearControl(4, 43);
     SmoothLinearControl _centerOfWaveControl = SmoothLinearControl(-stripLength(), 0);
-    SmoothLinearControl _hueSliceSizeControl = SmoothLinearControl(0.0, 0.33);
+    SmoothLinearControl _hueSliceSizeControl = SmoothLinearControl(0.01, 0.33);
     SmoothLinearControl _saturationControl = SmoothLinearControl(1, 1);
     
     float _hueSliceMin = 0;

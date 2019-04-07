@@ -30,11 +30,11 @@ uint32_t _ebss = 0;
 Clock sharedClock;
 
 
-const int stripCount = 4;
+const int stripCount = 2;
 int currentSequenceIndex = -1;
 unique_ptr<Sequence> currentSequences[stripCount];
 
-static const int NUM_LEDS = 90 * 4;
+static const int NUM_LEDS = 99 * 2;
 // static const int NUM_LEDS = 90 * 4;
 
 const int stripLength = NUM_LEDS;
@@ -79,16 +79,16 @@ vector<Context> contexts {
 
 const int slaveSelectPin = 7;
 
-SPISettings APA102(1000000, MSBFIRST, SPI_MODE0);
+SPISettings APA102(2800000, MSBFIRST, SPI_MODE0);
 
 NXPMotionSense imu;
 NXPSensorFusion filter;
 
 void setup() {
     Serial.begin(115200);
-
     imu.begin();
     filter.begin(10);
+
 
     // set the slaveSelectPin as an output:
     pinMode(slaveSelectPin, OUTPUT);
@@ -96,6 +96,7 @@ void setup() {
     SPI.begin();
 
     digitalWrite(slaveSelectPin, HIGH);  // enable access to LEDs
+  delayStart();
 
 }
 
