@@ -9,13 +9,10 @@
 
 #include "Control.h"
 #include "SequenceBase.h"
+#include "ledmath.h"
 
 #include <math.h>
 
-//typedef BufferedControl<LinearlyInterpolatedValueControl<float>> SmoothLinearControl;
-inline float sawtooth(float x) {
-    return fabsf((roundf(x) - x)) * 2;
-}
 
 class SinWaveSequence : public SequenceBase<SinWaveSequence> {
 
@@ -76,7 +73,7 @@ public:
         return _controls;
     }
 private:
-    SmoothAccumulatorControl _lightnessPhase = SmoothAccumulatorControl(-525.0, 500.0); // This should probably be an accumulator
+    SmoothAccumulatorControl _lightnessPhase = SmoothAccumulatorControl(-5.0, 4.0); // This should probably be an accumulator
     SmoothAccumulatorControl _colorPhase = SmoothAccumulatorControl(-500.0, 500.0);
     SmoothAccumulatorControl _hueSlicePhase = SmoothAccumulatorControl(0.0001, 0.035);
 

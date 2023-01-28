@@ -191,8 +191,8 @@ private:
     std::uniform_real_distribution<> distribution = std::uniform_real_distribution<>(0, 1);
     std::uniform_real_distribution<> lightnessDistribution = std::uniform_real_distribution<>(0.2, 0.95);
 
-    IdentityValueControl _ax = IdentityValueControl(); // This should probably be an accumulator
-    SmoothAccumulatorControl _hueSlicePhase = SmoothAccumulatorControl(0.0, 0.035);
+    IdentityValueControl _ax = IdentityValueControl(0.57); // This should probably be an accumulator
+    SmoothAccumulatorControl _hueSlicePhase = SmoothAccumulatorControl(0.0, 0.035, 0.02);
     SmoothLinearControl _hueSliceSizeControl = SmoothLinearControl(0.0, 0.5);
 
     const std::vector<Control *> _controls = {

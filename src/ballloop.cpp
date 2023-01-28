@@ -66,7 +66,7 @@ HSVSequence hsvSequence(stripLength, sharedClock);
 RGBSequence rgbSequence(stripLength, sharedClock);
 
 std::vector<Sequence *(*)()> sequences = {
-        [&]() -> Sequence * { return new SinWaveSequence(ledCount, sharedClock); },
+//        [&]() -> Sequence * { return new SinWaveSequence(ledCount, sharedClock); },
 };
 
 const int SequenceBasesCount = sizeof(sequences) / sizeof(Sequence *);

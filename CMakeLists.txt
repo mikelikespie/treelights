@@ -7,11 +7,11 @@ cmake_minimum_required(VERSION 2.8.4)
 
 set(ARDUINO_SDK_PATH /Applications/Arduino.app/Contents/Java)
 
-set(CMAKE_C_COMPILER /Applications/Arduino.app/Contents/Java/hardware/tools/arm/bin/arm-none-eabi-gcc)
-set(CMAKE_CXX_COMPILER /Applications/Arduino.app/Contents/Java/hardware/tools/arm/bin/arm-none-eabi-g++)
+#set(CMAKE_C_COMPILER /Applications/Arduino.app/Contents/Java/hardware/tools/arm/bin/arm-none-eabi-gcc)
+#set(CMAKE_CXX_COMPILER /Applications/Arduino.app/Contents/Java/hardware/tools/arm/bin/arm-none-eabi-g++)
 
-#set(CMAKE_C_COMPILER /usr/local/bin/arm-none-eabi-gcc)
-#set(CMAKE_CXX_COMPILER /usr/local/bin/arm-none-eabi-g++)
+set(CMAKE_C_COMPILER /usr/local/bin/arm-none-eabi-gcc)
+set(CMAKE_CXX_COMPILER /usr/local/bin/arm-none-eabi-g++)
 
 set(CMAKE_C_COMPILER_WORKS 1)
 set(CMAKE_CXX_COMPILER_WORKS 1)
@@ -22,7 +22,7 @@ set(EXTRA_INCLUDES "-I${ARDUINO_SDK_PATH}/hardware/teensy/avr/libraries/SPI \
         -I${ARDUINO_SDK_PATH}/hardware/teensy/avr/libraries/Wire \
         -I${ARDUINO_SDK_PATH}/hardware/teensy/avr/libraries/EEPROM \
         -I${ARDUINO_SDK_PATH}/hardware/teensy/avr/libraries/NXPMotionSense")
-set(ARDUINO_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -DLAYOUT_US_ENGLISH  ${EXTRA_INCLUDES} -DUSB_SERIAL -iquote libraries/FastLED -Ilibraries/FastLED -DF_CPU=${FCPU} -mfloat-abi=hard  -fno-exceptions -felide-constructors -fno-rtti -O3")
+set(ARDUINO_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++17 -DLAYOUT_US_ENGLISH  ${EXTRA_INCLUDES} -DUSB_SERIAL -iquote libraries/FastLED -Ilibraries/FastLED -DF_CPU=${FCPU} -mfloat-abi=hard  -fno-exceptions -felide-constructors -fno-rtti -O3 -L/Applications/Arduino.app/Contents/Java/hardware/tools/arm/arm-none-eabi/lib" )
 set(ARDUINO_C_FLAGS "${CMAKE_C_FLAGS} -DUSB_SERIAL -DLAYOUT_US_ENGLISH -Ilibraries/FastLED  -iquote libraries/FastLED -DF_CPU=${FCPU} -mfloat-abi=hard -O3")
 
 
@@ -91,6 +91,7 @@ generate_arduino_library(RF24
 set(Wire_INCLUDES ${ARDUINO_SDK_PATH}/hardware/teensy/avr/libraries/Wire)
 set(Wire_SRCS
         ${ARDUINO_SDK_PATH}/hardware/teensy/avr/libraries/Wire/Wire.cpp
+        ${ARDUINO_SDK_PATH}/hardware/teensy/avr/libraries/Wire/WireKinetis.cpp
         ${ARDUINO_SDK_PATH}/hardware/teensy/avr/libraries/Wire/utility/twi.c
         )
 set(Wire_HDRS ${ARDUINO_SDK_PATH}/hardware/teensy/avr/libraries/Wire/Wire.h
@@ -112,6 +113,14 @@ generate_arduino_firmware(treelights
     HDRS ${HEADER_FILES}
     BOARD teensy35
     LIBS SPI Wire NXPMotionSense
+    )
+
+generate_arduino_firmware(afrikalights
+    PROGRAMMER usbtinyisp
+    SRCS ${SOURCE_FILES} src/loop3.cpp
+    HDRS ${HEADER_FILES}
+    BOARD teensy35
+    LIBS SPI Wire
     )
 
 generate_arduino_firmware(ball

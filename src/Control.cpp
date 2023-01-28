@@ -12,9 +12,28 @@ void ValueControl<ValueType>::tick(const Clock &clock, float inputValue) {
     }
 }
 
+
+template <typename ValueType>
+void ValueControl<ValueType>::tick(const Clock &clock) {
+    auto newValue = computeNextValue(clock);
+    _didChange = _value != newValue;
+    if (_didChange) {
+        _value = newValue;
+    }
+}
+
+
+
+/// Defaults to just return the default value
+template <typename ValueType>
+ValueType ValueControl<ValueType>::computeNextValue(const Clock &clock) {
+    return value();
+}
+
 bool BooleanValueControl::computeNextValue(const Clock &clock, float inputValue) {
     return inputValue > 0.5;
 }
+
 
 float IdentityValueControl::computeNextValue(const Clock &clock, float inputValue) {
     return inputValue;

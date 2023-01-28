@@ -1,45 +1,28 @@
 extern "C" int _kill(int pid, int sig) { return 0; }
 extern "C" int _getpid(void) { return 1; }
-//extern "C" int _init(void) { return 1; }
 
-//#include <OctoWS2811.h>
-
-#include <Arduino.h>
-//#include "FastLED.h"
-#include <SPI.h>
-#include <usb_serial.h>
 #include <algorithm>
 
-#ifdef round
-#undef round
-#endif
+#include <SPI.h>
+#include <usb_serial.h>
+
+#include </Applications/Arduino.app/Contents/Java/hardware/teensy/avr/libraries/SPI/SPI.h>
 
 #ifdef abs
 #undef abs
 #endif
 
-#ifdef min
-#undef min
-#endif
-#ifdef max
-#undef max
-#endif
-
-
-//#include "nanoflann.hpp"
-#include </Applications/Arduino.app/Contents/Java/hardware/teensy/avr/libraries/SPI/SPI.h>
-#include </Applications/Arduino.app/Contents/Java/hardware/teensy/avr/libraries/NXPMotionSense/NXPMotionSense.h>
 #include <memory>
 #include "clock.h"
 #include "Context.h"
 #include "SequenceBase.h"
 #include "Control.h"
 #include "ExampleSequence.h"
-#include "ParticleEffectSequence.h"
+#include "BurningFlambeosSequence.h"
 #include "SinWaveSequence.h"
+#include "ParticleEffectSequence.h"
 
 using namespace std;
-
 
 extern "C" uint32_t _ebss;
 
@@ -48,14 +31,15 @@ uint32_t _ebss = 0;
 Clock sharedClock;
 
 
-const int stripCount = 2;
+const int stripCount = 6 * 4;
 int currentSequenceIndex = -1;
 unique_ptr<Sequence> currentSequences[stripCount];
 
-static const int NUM_LEDS = 99 * 2;
-// static const int NUM_LEDS = 90 * 4;
+static const int NUM_LEDS = 60 * 5 * 4;
 
 const int stripLength = NUM_LEDS;
+
+float max_a_magnitude = 0;
 
 static ARGB leds[NUM_LEDS];
 
@@ -63,13 +47,10 @@ const int realStripLength = NUM_LEDS / stripCount;
 
 IdentityValueControl brightnessControl;
 std::mt19937 gen(0);
-//SinWaveSequence sinWaveSequence(stripLength, sharedClock);
-//ParticleEffectSequence particleEffectSequence(stripLength, sharedClock);
-HSVSequence hsvSequence(stripLength, sharedClock);
-RGBSequence rgbSequence(stripLength, sharedClock);
 
 std::vector<Sequence *(*)()> sequences = {
-        []() -> Sequence * { return new ParticleEffectSequence(&gen, realStripLength, sharedClock); },
+//        [&]()-> Sequence *{ return new ParticleEffectSequence(&gen, realStripLength, sharedClock); },
+//        [&]() -> Sequence * { return new BurningFlambeosSequence(realStripLength, sharedClock); },
 };
 
 const int SequenceBasesCount = sizeof(sequences) / sizeof(Sequence *);
@@ -90,22 +71,35 @@ vector<Context> contexts{
         Context(leds + realStripLength * 0, realStripLength, true),
         Context(leds + realStripLength * 1, realStripLength, false),
         Context(leds + realStripLength * 2, realStripLength, true),
-        Context(leds + realStripLength * 3, realStripLength, false)
-
+        Context(leds + realStripLength * 3, realStripLength, false),
+        Context(leds + realStripLength * 4, realStripLength, true),
+        Context(leds + realStripLength * 5, realStripLength, false),
+        Context(leds + realStripLength * 6, realStripLength, true),
+        Context(leds + realStripLength * 7, realStripLength, false),
+        Context(leds + realStripLength * 8, realStripLength, true),
+        Context(leds + realStripLength * 9, realStripLength, false),
+        Context(leds + realStripLength * 10, realStripLength, true),
+        Context(leds + realStripLength * 11, realStripLength, false),
+        Context(leds + realStripLength * 12, realStripLength, true),
+        Context(leds + realStripLength * 13, realStripLength, false),
+        Context(leds + realStripLength * 14, realStripLength, true),
+        Context(leds + realStripLength * 15, realStripLength, false),
+        Context(leds + realStripLength * 16, realStripLength, true),
+        Context(leds + realStripLength * 17, realStripLength, false),
+        Context(leds + realStripLength * 18, realStripLength, true),
+        Context(leds + realStripLength * 19, realStripLength, false),
+        Context(leds + realStripLength * 20, realStripLength, true),
+        Context(leds + realStripLength * 21, realStripLength, false),
+        Context(leds + realStripLength * 22, realStripLength, true),
+        Context(leds + realStripLength * 23, realStripLength, false),
 };
 
 const int slaveSelectPin = 7;
 
 SPISettings APA102(2800000, MSBFIRST, SPI_MODE0);
 
-NXPMotionSense imu;
-NXPSensorFusion filter;
-
 void setup() {
   Serial.begin(115200);
-  imu.begin();
-  filter.begin(10);
-
 
   // set the slaveSelectPin as an output:
   pinMode(slaveSelectPin, OUTPUT);
@@ -113,7 +107,7 @@ void setup() {
   SPI.begin();
 
   digitalWrite(slaveSelectPin, HIGH);  // enable access to LEDs
-  delayStart();
+//  delayStart();
 
 }
 
@@ -150,15 +144,6 @@ void writeBuffer() {
 //    digitalWrite(slaveSelectPin, LOW);
 }
 
-int cnt = 0;
-int imu_cnt = 0;
-
-int idx = 0;
-float ax, ay, az;
-float max_a_magnitude = 0;
-float gx, gy, gz;
-float mx, my, mz;
-float roll = 0, pitch = 0, heading = 0;
 
 boolean coolingDownCycle = false;
 
@@ -168,23 +153,10 @@ const float shockHighWatermark = 4.0;
 void loop() {
   sharedClock.tick();
 
-  boolean shockTriggered = false;
-  if (max_a_magnitude > shockHighWatermark) {
-    if (!coolingDownCycle) {
-      shockTriggered = true;
-      coolingDownCycle = true;
-    }
-  } else if (max_a_magnitude < shockLowWatermark && coolingDownCycle) {
-    coolingDownCycle = false;
-  }
-
   brightnessControl.tick(sharedClock, 0);
   visualizationControl.tick(sharedClock, 0);
 
-//    int newSequenceIndex = visualizationControl.value();
-
-  int newSequenceIndex = std::max(0, (int) (shockTriggered ? (currentSequenceIndex + 1) % sequences.size()
-                                                           : currentSequenceIndex));
+  int newSequenceIndex = 0;
 
 
   if (newSequenceIndex != currentSequenceIndex) {
@@ -206,63 +178,18 @@ void loop() {
 
     auto iter = currentControls->begin();
     if (currentControls->size()) {
-      ++iter;
+//            ++iter;
       for (int i = 0; i < 16 && iter != currentControls->end(); ++i) {
-        (*iter)->tick(sharedClock, 0.5);
+        (*iter)->tick(sharedClock);
         ++iter;
       }
 
-      (*currentControls)[0]->tick(sharedClock, -ax + 0.5);
+//            (*currentControls)[0]->tick(sharedClock, 0.4);
     }
 
     currentSequence->loop(&contexts[contextIndex]);
     contextIndex++;
   }
-
-
-  if (imu.available()) {
-    // Read the motion sensors
-    imu.readMotionSensor(ax, ay, az, gx, gy, gz, mx, my, mz);
-
-    // Update the SensorFusion filter
-    filter.update(gx, gy, gz, ax, ay, az, mx, my, mz);
-
-    // print the heading, pitch and roll
-    roll = filter.getRoll();
-    pitch = filter.getPitch();
-    heading = filter.getYaw();
-
-//        float g_magnitude = sqrtf(gx * gx + gy * gy + gz * gz);
-    float a_magnitude = sqrtf(ax * ax + ay * ay + az * az);
-
-    max_a_magnitude *= 0.99;
-    max_a_magnitude = std::max(max_a_magnitude, a_magnitude);
-
-    if (imu_cnt % 100 == 0) {
-      Serial.print("Orientation: ax");
-      Serial.print(ax);
-      Serial.print(" ay:");
-      Serial.print(ay);
-      Serial.print(" az:");
-      Serial.print(az);
-      Serial.printf(" a_magnitude:");
-      Serial.print(a_magnitude);
-      Serial.printf(" max_a_magnitude:");
-      Serial.print(max_a_magnitude);
-
-      Serial.print(" gx:");
-      Serial.print(gx);
-      Serial.print(" gy:");
-      Serial.print(gy);
-      Serial.print(" gz:");
-      Serial.print(gz);
-
-      Serial.println("");
-    }
-
-    imu_cnt++;
-  }
-
 
   writeBuffer();
 }

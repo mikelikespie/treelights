@@ -5,12 +5,36 @@
 #ifndef TREELIGHTS_COLOR_H_H
 #define TREELIGHTS_COLOR_H_H
 
-#include <stdint.h>
+
+#include <Arduino.h>
+#include <usb_serial.h>
+
+#include <core_pins.h>
+
+#ifdef round
+#undef round
+#endif
+
+#ifdef abs
+#undef abs
+#endif
+
+#ifdef min
+#undef min
+#endif
+#ifdef max
+#undef max
+#endif
+
 #include <cmath>
 #include <algorithm>
 #include <random>
-#include <core_pins.h>
-#include <usb_serial.h>
+
+#include <stdint.h>
+
+#ifdef abs
+#undef abs
+#endif
 
 struct ARGB {
     uint8_t a;
