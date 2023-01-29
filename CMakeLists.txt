@@ -5,13 +5,13 @@ set(ARDUINO_DEFAULT_BOARD teensy35)
 
 cmake_minimum_required(VERSION 2.8.4)
 
-set(ARDUINO_SDK_PATH /Applications/Arduino.app/Contents/Java)
+set(ARDUINO_SDK_PATH /Applications/Teensyduino.app/Contents/Java)
 
 #set(CMAKE_C_COMPILER /Applications/Arduino.app/Contents/Java/hardware/tools/arm/bin/arm-none-eabi-gcc)
 #set(CMAKE_CXX_COMPILER /Applications/Arduino.app/Contents/Java/hardware/tools/arm/bin/arm-none-eabi-g++)
 
-set(CMAKE_C_COMPILER /usr/local/bin/arm-none-eabi-gcc)
-set(CMAKE_CXX_COMPILER /usr/local/bin/arm-none-eabi-g++)
+set(CMAKE_C_COMPILER /opt/homebrew/bin/arm-none-eabi-gcc)
+set(CMAKE_CXX_COMPILER /opt/homebrew/bin/arm-none-eabi-g++)
 
 set(CMAKE_C_COMPILER_WORKS 1)
 set(CMAKE_CXX_COMPILER_WORKS 1)

@@ -6,7 +6,7 @@ extern "C" int _getpid(void) { return 1; }
 #include <SPI.h>
 #include <usb_serial.h>
 
-#include </Applications/Arduino.app/Contents/Java/hardware/teensy/avr/libraries/SPI/SPI.h>
+//#include </Applications/Arduino.app/Contents/Java/hardware/teensy/avr/libraries/SPI/SPI.h>
 
 #ifdef abs
 #undef abs
@@ -31,11 +31,11 @@ uint32_t _ebss = 0;
 Clock sharedClock;
 
 
-const int stripCount = 6 * 4;
+const int stripCount = 4;
 int currentSequenceIndex = -1;
-unique_ptr<Sequence> currentSequences[stripCount];
+unique_ptr <Sequence> currentSequences[stripCount];
 
-static const int NUM_LEDS = 60 * 5 * 4;
+static const int NUM_LEDS = 60 * 4;
 
 const int stripLength = NUM_LEDS;
 
@@ -43,19 +43,17 @@ float max_a_magnitude = 0;
 
 static ARGB leds[NUM_LEDS];
 
-const int realStripLength = NUM_LEDS / stripCount;
+const int realStripLength = 60;
 
 IdentityValueControl brightnessControl;
 std::mt19937 gen(0);
 
 std::vector<Sequence *(*)()> sequences = {
-//        [&]()-> Sequence *{ return new ParticleEffectSequence(&gen, realStripLength, sharedClock); },
+        [&]() -> Sequence * { return new ParticleEffectSequence(&gen, realStripLength, sharedClock); },
 //        [&]() -> Sequence * { return new BurningFlambeosSequence(realStripLength, sharedClock); },
 };
 
 const int SequenceBasesCount = sizeof(sequences) / sizeof(Sequence *);
-
-LinearlyInterpolatedValueControl<int> visualizationControl(0, SequenceBasesCount - 1);
 
 
 void writeEndFrame(size_t ledCount);
@@ -67,31 +65,11 @@ inline void writeColor(const ARGB &color);
 
 void delayStart();
 
-vector<Context> contexts{
-        Context(leds + realStripLength * 0, realStripLength, true),
+vector <Context> contexts{
+        Context(leds + realStripLength * 0, realStripLength, false),
         Context(leds + realStripLength * 1, realStripLength, false),
-        Context(leds + realStripLength * 2, realStripLength, true),
+        Context(leds + realStripLength * 2, realStripLength, false),
         Context(leds + realStripLength * 3, realStripLength, false),
-        Context(leds + realStripLength * 4, realStripLength, true),
-        Context(leds + realStripLength * 5, realStripLength, false),
-        Context(leds + realStripLength * 6, realStripLength, true),
-        Context(leds + realStripLength * 7, realStripLength, false),
-        Context(leds + realStripLength * 8, realStripLength, true),
-        Context(leds + realStripLength * 9, realStripLength, false),
-        Context(leds + realStripLength * 10, realStripLength, true),
-        Context(leds + realStripLength * 11, realStripLength, false),
-        Context(leds + realStripLength * 12, realStripLength, true),
-        Context(leds + realStripLength * 13, realStripLength, false),
-        Context(leds + realStripLength * 14, realStripLength, true),
-        Context(leds + realStripLength * 15, realStripLength, false),
-        Context(leds + realStripLength * 16, realStripLength, true),
-        Context(leds + realStripLength * 17, realStripLength, false),
-        Context(leds + realStripLength * 18, realStripLength, true),
-        Context(leds + realStripLength * 19, realStripLength, false),
-        Context(leds + realStripLength * 20, realStripLength, true),
-        Context(leds + realStripLength * 21, realStripLength, false),
-        Context(leds + realStripLength * 22, realStripLength, true),
-        Context(leds + realStripLength * 23, realStripLength, false),
 };
 
 const int slaveSelectPin = 7;
@@ -134,7 +112,7 @@ void writeBuffer() {
 
   writeStartFrame();
 
-  for (const auto &c : leds) {
+  for (const auto &c: leds) {
     writeColor(c);
   }
 
@@ -145,16 +123,15 @@ void writeBuffer() {
 }
 
 
-boolean coolingDownCycle = false;
-
 const float shockLowWatermark = 1.5;
 const float shockHighWatermark = 4.0;
 
+double readFloat() {
+  return Serial.readStringUntil('\n').toFloat();
+}
+
 void loop() {
   sharedClock.tick();
-
-  brightnessControl.tick(sharedClock, 0);
-  visualizationControl.tick(sharedClock, 0);
 
   int newSequenceIndex = 0;
 
@@ -163,17 +140,49 @@ void loop() {
     Serial.print("Switching sequence to ");
     Serial.print(newSequenceIndex);
     Serial.println(".");
+    Serial.println("initializing");
 
     currentSequenceIndex = newSequenceIndex;
-    for (auto &currentSequence : currentSequences) {
+    for (auto &currentSequence: currentSequences) {
+      Serial.println("resetting");
+
       currentSequence.reset(sequences[currentSequenceIndex]());
       currentSequence->initialize();
+      Serial.println("reseted");
     }
     Serial.println("Initialized");
   }
 
+
+  if (Serial.available()) {
+    char command = Serial.read();
+
+    switch (command) {
+      // Switch hue
+      case 'h': {
+        double value = readFloat();
+        for (auto &currentSequence: currentSequences) {
+          if (currentSequence->controls().size() > 2) {
+            currentSequence->controls()[1]->tick(Clock(), value);
+          }
+        }
+        break;
+      }
+        // Amount of particles;
+      case 'a':
+        double value = readFloat();
+        for (auto &currentSequence: currentSequences) {
+          if (currentSequence->controls().size() > 3  ) {
+            currentSequence->controls()[3]->tick(Clock(), value);
+          }
+        }
+        break;
+    }
+  }
+
+
   int contextIndex = 0;
-  for (auto &currentSequence : currentSequences) {
+  for (auto &currentSequence: currentSequences) {
     const std::vector<Control *> *currentControls = &currentSequence->controls();
 
     auto iter = currentControls->begin();
@@ -183,8 +192,6 @@ void loop() {
         (*iter)->tick(sharedClock);
         ++iter;
       }
-
-//            (*currentControls)[0]->tick(sharedClock, 0.4);
     }
 
     currentSequence->loop(&contexts[contextIndex]);

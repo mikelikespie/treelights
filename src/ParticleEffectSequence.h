@@ -28,7 +28,7 @@ struct Particle {
 class ParticleEffectSequence : public SequenceBase<ParticleEffectSequence> {
 public:
     ParticleEffectSequence(std::mt19937 *gen, int stripLength, const Clock &clock)
-            : SequenceBase(stripLength, clock), gen(gen), _hueOffset((float)distribution(*gen)) {
+            : SequenceBase(stripLength, clock), gen(gen), _hueOffset(0) {
         _buffer1.resize((size_t) (stripLength), RGBLinear {0, 0, 0});
         _buffer2.resize((size_t) (stripLength), RGBLinear {0, 0, 0});
     }
@@ -57,19 +57,18 @@ public:
 
             if (i == 0) {
                 dest = src;
-
             }
         }
     }
 
     void updateParticles(float deltat, float ax) {
-        boolean create_pixel = distribution(*gen) > expf(generation_k() * -deltat * (fabsf(ax) * 60.0f + 0.2f));
+        boolean create_pixel = distribution(*gen) > expf(generation_k() * -deltat * (fabsf(ax) * 60.0f + 0.2f) * _generationAmount.value());
 
         const float min_position = -0.4f;
         const float max_position = 1.4f;
 
 
-        if (create_pixel && _particles.size() < 50) {
+        if (create_pixel && _particles.size() < 100) {
             std::uniform_real_distribution<float> spawn_distribution(min_position, max_position);
 
             float hue = calculateHue();
@@ -80,7 +79,7 @@ public:
             brightness *= brightness;
 
             _particles.emplace_back(
-                    Particle {(ax < 0 ? 1.0f : 0.0f) + std::normal_distribution<float>(0.0f, 0.04f)(*gen), 0, hue,
+                    Particle {(ax < 0 ? 1.0f : 0.0f) + std::normal_distribution<float>(0.0f, 0.04f)(*gen), .8, hue,
                               saturation, brightness, 0});
         }
 
@@ -165,7 +164,7 @@ public:
 
         SequenceBase::loop(context);
 
-        _hueSlicePhase.truncate(1.0f);
+//        _hueSlicePhase.truncate(1.0f);
 
     }
 
@@ -189,16 +188,18 @@ public:
 private:
     std::mt19937 *gen;
     std::uniform_real_distribution<> distribution = std::uniform_real_distribution<>(0, 1);
-    std::uniform_real_distribution<> lightnessDistribution = std::uniform_real_distribution<>(0.2, 0.95);
+    std::uniform_real_distribution<> lightnessDistribution = std::uniform_real_distribution<>(0.8, 1);
 
-    IdentityValueControl _ax = IdentityValueControl(0.57); // This should probably be an accumulator
-    SmoothAccumulatorControl _hueSlicePhase = SmoothAccumulatorControl(0.0, 0.035, 0.02);
-    SmoothLinearControl _hueSliceSizeControl = SmoothLinearControl(0.0, 0.5);
+  IdentityValueControl _ax = IdentityValueControl(.0); // This should probably be an accumulator
+  IdentityValueControl _hueSlicePhase = IdentityValueControl(.015);
+  IdentityValueControl _hueSliceSizeControl = IdentityValueControl(.03);
+  IdentityValueControl _generationAmount = IdentityValueControl(0.2);
 
     const std::vector<Control *> _controls = {
             &_ax,
             &_hueSlicePhase,
             &_hueSliceSizeControl,
+            &_generationAmount,
     };
 
     float _hueSliceMin;

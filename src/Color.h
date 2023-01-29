@@ -6,29 +6,31 @@
 #define TREELIGHTS_COLOR_H_H
 
 
+
+#include <random>
+#include <cmath>
+#include <algorithm>
+
 #include <Arduino.h>
 #include <usb_serial.h>
 
 #include <core_pins.h>
-
-#ifdef round
-#undef round
-#endif
-
-#ifdef abs
-#undef abs
-#endif
-
-#ifdef min
-#undef min
-#endif
-#ifdef max
-#undef max
-#endif
-
-#include <cmath>
-#include <algorithm>
-#include <random>
+//
+//#ifdef round
+//#undef round
+//#endif
+//
+//#ifdef abs
+//#undef abs
+//#endif
+//
+//#ifdef min
+//#undef min
+//#endif
+//#ifdef max
+//#undef max
+//#endif
+//
 
 #include <stdint.h>
 
@@ -67,7 +69,9 @@ struct RGBLog {
     float r, g, b;
 
     inline operator const RGBLinear() const {
-        return RGBLinear { r * r, g * g, b * b };
+// THIS IS WRONG, just hardcoded it to make LEDs bright
+      return RGBLinear { r , g ,  b };
+//        return RGBLinear { r * r, g * g, b * b };
     }
 };
 
@@ -81,7 +85,7 @@ struct HSV {
     inline operator const RGBLinear() const {
         float c = v * this->s;
 
-        float h_prime = std::min(1.0f, std::max(0.0f, h)) * 6;
+        float h_prime = std::min<float>(1.0f, std::max<float>(0.0f, h)) * 6;
 
         float r1 = 0, g1 = 0, b1 = 0;
 
@@ -140,7 +144,7 @@ inline ARGB adjustLinearFloatColor(float r, float g, float b, Generator *rnd) {
     const float threshold = 2;
 
     uint8_t a = 31;
-    float maxrgb = std::max(std::max(r, g), b);
+    float maxrgb = std::max<float>(std::max<float>(r, g), b);
 
     if (maxrgb < threshold) {
         if (maxrgb == 0) {
