@@ -35,7 +35,7 @@ const int stripCount = 4;
 int currentSequenceIndex = -1;
 unique_ptr <Sequence> currentSequences[stripCount];
 
-static const int NUM_LEDS = 60 * 4;
+static const int NUM_LEDS = 118 * stripCount;
 
 const int stripLength = NUM_LEDS;
 
@@ -43,7 +43,7 @@ float max_a_magnitude = 0;
 
 static ARGB leds[NUM_LEDS];
 
-const int realStripLength = 60;
+const int realStripLength = 118;
 
 IdentityValueControl brightnessControl;
 std::mt19937 gen(0);

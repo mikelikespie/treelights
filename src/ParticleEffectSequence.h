@@ -79,7 +79,9 @@ public:
             brightness *= brightness;
 
             _particles.emplace_back(
-                    Particle {(ax < 0 ? 1.0f : 0.0f) + std::normal_distribution<float>(0.0f, 0.04f)(*gen), .8, hue,
+                    Particle {(ax > 0 ? 1.0f : 0.0f) + std::normal_distribution<float>(0.0f, 0.04f)(*gen),
+                            std::normal_distribution<float>(1.2f, 0.04f)(*gen),
+                                    hue,
                               saturation, brightness, 0});
         }
 
@@ -156,8 +158,8 @@ public:
             p = RGBLinear {0, 0, 0};
         }
 
-        float ax = -(_ax.value() - 0.5f) * deltat * 2;
-
+//        float ax = -(_ax.value() - 0.5f) * deltat * 2;
+      float ax = -.005;
         updateParticles(deltat, ax);
         paintParticles(deltat);
         decayPixels(deltat);
@@ -188,12 +190,12 @@ public:
 private:
     std::mt19937 *gen;
     std::uniform_real_distribution<> distribution = std::uniform_real_distribution<>(0, 1);
-    std::uniform_real_distribution<> lightnessDistribution = std::uniform_real_distribution<>(0.8, 1);
+    std::uniform_real_distribution<> lightnessDistribution = std::uniform_real_distribution<>(0.8, 1.2);
 
-  IdentityValueControl _ax = IdentityValueControl(.0); // This should probably be an accumulator
-  IdentityValueControl _hueSlicePhase = IdentityValueControl(.015);
-  IdentityValueControl _hueSliceSizeControl = IdentityValueControl(.03);
-  IdentityValueControl _generationAmount = IdentityValueControl(0.2);
+  IdentityValueControl _ax = IdentityValueControl(.5); // This should probably be an accumulator
+  IdentityValueControl _hueSlicePhase = IdentityValueControl(.75);
+  IdentityValueControl _hueSliceSizeControl = IdentityValueControl(.3);
+  IdentityValueControl _generationAmount = IdentityValueControl(0.4);
 
     const std::vector<Control *> _controls = {
             &_ax,
