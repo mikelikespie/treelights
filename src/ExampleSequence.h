@@ -47,7 +47,7 @@ public:
 private:
     IdentityValueControl _hControl = IdentityValueControl();
     IdentityValueControl _sControl = IdentityValueControl();
-    IdentityValueControl _vControl = IdentityValueControl();
+    IdentityValueControl _vControl = IdentityValueControl(.2);
 
     const std::vector<Control *> _controls = {&_hControl, &_sControl, &_vControl};
 };

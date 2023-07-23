@@ -11,6 +11,9 @@ extern "C" int _getpid(void) { return 1; }
 #ifdef abs
 #undef abs
 #endif
+#ifdef round
+#undef round
+#endif
 
 #include <memory>
 #include "clock.h"
@@ -29,9 +32,9 @@ extern "C" uint32_t _ebss;
 uint32_t _ebss = 0;
 
 Clock sharedClock;
-
-
 const int stripCount = 4;
+
+
 int currentSequenceIndex = -1;
 unique_ptr <Sequence> currentSequences[stripCount];
 
@@ -48,8 +51,8 @@ const int realStripLength = 118;
 IdentityValueControl brightnessControl;
 std::mt19937 gen(0);
 
-std::vector<Sequence *(*)()> sequences = {
-        [&]() -> Sequence * { return new ParticleEffectSequence(&gen, realStripLength, sharedClock); },
+const std::vector<Sequence *(*)()> sequences = {
+        [&gen, realStripLength, &sharedClock]() -> Sequence * { return new ParticleEffectSequence(&gen, realStripLength, sharedClock); },
 //        [&]() -> Sequence * { return new BurningFlambeosSequence(realStripLength, sharedClock); },
 };
 
@@ -64,6 +67,7 @@ void writeStartFrame();
 inline void writeColor(const ARGB &color);
 
 void delayStart();
+void writeBuffer();
 
 vector <Context> contexts{
         Context(leds + realStripLength * 0, realStripLength, false),
@@ -74,7 +78,6 @@ vector <Context> contexts{
 
 const int slaveSelectPin = 7;
 
-SPISettings APA102(2800000, MSBFIRST, SPI_MODE0);
 
 void setup() {
   Serial.begin(115200);
@@ -106,21 +109,6 @@ void delayStart() {
   Serial.println("1");
 }
 
-void writeBuffer() {
-  SPI.beginTransaction(APA102);
-
-
-  writeStartFrame();
-
-  for (const auto &c: leds) {
-    writeColor(c);
-  }
-
-  writeEndFrame(NUM_LEDS);
-
-  SPI.endTransaction();
-//    digitalWrite(slaveSelectPin, LOW);
-}
 
 
 const float shockLowWatermark = 1.5;
@@ -199,6 +187,23 @@ void loop() {
   }
 
   writeBuffer();
+}
+SPISettings APA102(2800000, MSBFIRST, SPI_MODE0);
+
+void writeBuffer() {
+  SPI.beginTransaction(APA102);
+
+
+  writeStartFrame();
+
+  for (const auto &c: leds) {
+    writeColor(c);
+  }
+
+  writeEndFrame(NUM_LEDS);
+
+  SPI.endTransaction();
+//    digitalWrite(slaveSelectPin, LOW);
 }
 
 inline void writeColor(const ARGB &color) {

@@ -70,8 +70,8 @@ struct RGBLog {
 
     inline operator const RGBLinear() const {
 // THIS IS WRONG, just hardcoded it to make LEDs bright
-      return RGBLinear { r , g ,  b };
-//        return RGBLinear { r * r, g * g, b * b };
+//      return RGBLinear { r , g ,  b };
+        return RGBLinear { r * r, g * g, b * b };
     }
 };
 
@@ -152,7 +152,7 @@ inline ARGB adjustLinearFloatColor(float r, float g, float b, Generator *rnd) {
         }
 
         float needed_mult = 1.0f / maxrgb;
-        a = uint8_t(roundf(31 / needed_mult));
+        a = uint8_t(ceilf(31 / needed_mult));
         if (a == 0) {
             a = 1;
         }
