@@ -52,7 +52,7 @@ IdentityValueControl brightnessControl;
 std::mt19937 gen(0);
 
 const std::vector<Sequence *(*)()> sequences = {
-        [&gen, realStripLength, &sharedClock]() -> Sequence * { return new ParticleEffectSequence(&gen, realStripLength, sharedClock); },
+        []() -> Sequence * { return new ParticleEffectSequence(&gen, realStripLength, sharedClock); },
 //        [&]() -> Sequence * { return new BurningFlambeosSequence(realStripLength, sharedClock); },
 };
 

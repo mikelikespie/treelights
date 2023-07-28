@@ -67,21 +67,19 @@ void writeBuffer();
 
 vector <Context> contexts{
         Context(leds + realStripLength * 0, realStripLength, false),
-        Context(leds + realStripLength * 1, realStripLength, true),
+        Context(leds + realStripLength * 1, realStripLength, false),
         Context(leds + realStripLength * 2, realStripLength, false),
-        Context(leds + realStripLength * 3, realStripLength, true),
+        Context(leds + realStripLength * 3, realStripLength, false),
 };
 
 std::mt19937 gen(0);
 
 
-float fftLevels[32] = {0};
-
 int currentSequenceIndex = -1;
 
 
 const std::vector<Sequence *(*)()> sequences = {
-        [&gen, realStripLength, &sharedClock]() -> Sequence * {
+        []() -> Sequence * {
           return new SoundHistogramSequence(realStripLength, sharedClock);
           return new HSVSequence(realStripLength, sharedClock);
           return new ParticleEffectSequence(&gen, realStripLength, sharedClock);
@@ -106,6 +104,9 @@ AudioOutputI2S audioOutput;        // audio shield: headphones & line-out
 AudioConnection patchCord1(audioInput, 0, myFFT, 0);
 
 AudioControlSGTL5000 audioShield;
+
+
+SoundDataBuffer soundDataBuffer;
 
 void setup() {
 
@@ -138,63 +139,11 @@ void setup() {
   digitalWrite(slaveSelectPin, HIGH);  // enable access to LEDs
 }
 
+
 void loop() {
   sharedClock.tick();
 
-  float n;
   int i;
-
-  if (myFFT.available()) {
-    // each time new FFT data is available
-    // print it all to the Arduino Serial Monitor
-//    Serial.print("FFT: ");
-    // read the 512 FFT frequencies into 16 levels
-    // music is heard in octaves, but the FFT data
-    // is linear, so for the higher octaves, read
-    // many FFT bins together.
-    fftLevels[0] = myFFT.read(0);
-    fftLevels[1] = myFFT.read(1);
-    fftLevels[2] = myFFT.read(2);
-    fftLevels[3] = myFFT.read(3, 4);
-    fftLevels[4] = myFFT.read(5, 6);
-    fftLevels[5] = myFFT.read(7, 8);
-    fftLevels[6] = myFFT.read(9, 11);
-    fftLevels[7] = myFFT.read(12, 14);
-    fftLevels[8] = myFFT.read(15, 18);
-    fftLevels[9] = myFFT.read(19, 22);
-    fftLevels[10] = myFFT.read(23, 27);
-    fftLevels[11] = myFFT.read(28, 33);
-    fftLevels[12] = myFFT.read(34, 40);
-    fftLevels[13] = myFFT.read(41, 48);
-    fftLevels[14] = myFFT.read(49, 57);
-    fftLevels[15] = myFFT.read(58, 67);
-    fftLevels[16] = myFFT.read(68, 78);
-    fftLevels[17] = myFFT.read(79, 91);
-    fftLevels[18] = myFFT.read(92, 105);
-    fftLevels[19] = myFFT.read(106, 121);
-    fftLevels[20] = myFFT.read(122, 139);
-    fftLevels[21] = myFFT.read(140, 159);
-    fftLevels[22] = myFFT.read(160, 182);
-    fftLevels[23] = myFFT.read(183, 208);
-    fftLevels[24] = myFFT.read(209, 238);
-    fftLevels[25] = myFFT.read(239, 272);
-    fftLevels[26] = myFFT.read(273, 310);
-    fftLevels[27] = myFFT.read(311, 353);
-    fftLevels[28] = myFFT.read(354, 403);
-    fftLevels[29] = myFFT.read(404, 459);
-    fftLevels[30] = myFFT.read(460, 500);
-    fftLevels[31] = myFFT.read(500, 511);
-//    for (i = 0; i < 32; i++) {
-//      n = fftLevels[i];
-//      if (n >= 0.01) {
-//        Serial.print(n);
-//        Serial.print(" ");
-//      } else {
-//        Serial.print("  -  "); // don't print "0.00"
-//      }
-//    }
-//    Serial.println();
-  }
 
 
   int newSequenceIndex = 0;
@@ -212,22 +161,42 @@ void loop() {
 
       currentSequence.reset(sequences[currentSequenceIndex]());
       currentSequence->initialize();
+      currentSequence->updateSoundData(soundDataBuffer);
       Serial.println("reseted");
     }
     Serial.println("Initialized");
   }
 
+
+  if (myFFT.available()) {
+    // each time new FFT data is available
+    // print it all to the Arduino Serial Monitor
+//    Serial.print("FFT: ");
+    // read the 512 FFT frequencies into 16 levels
+    // music is heard in octaves, but the FFT data
+    // is linear, so for the higher octaves, read
+    // many FFT bins together.
+    for (i = 0; i < SOUND_BUFFER_BIN_COUNT; i++) {
+      soundDataBuffer[i] = myFFT.read(i);
+    }
+
+    for (auto &currentSequence: currentSequences) {
+      currentSequence->updateSoundData(soundDataBuffer);
+    }
+  }
+
+
   int contextIndex = 0;
   for (auto &currentSequence: currentSequences) {
     const std::vector<Control *> *currentControls = &currentSequence->controls();
 
-    auto iter = currentControls->begin();
+//    auto iter = currentControls->begin();
     if (currentControls->size()) {
 //            ++iter;
-      for (int i = 0; i < 32 && iter != currentControls->end(); ++i) {
-        (*iter)->tick(sharedClock, fftLevels[i]);
-        ++iter;
-      }
+//      for (int i = 0; i < 32 && iter != currentControls->end(); ++i) {
+//        (*iter)->tick(sharedClock, fftLevels[i]);
+//        ++iter;
+//      }
     }
 
     currentSequence->loop(&contexts[contextIndex]);
