@@ -55,10 +55,8 @@ public:
 
   void updateSoundData(const SoundDataBuffer data) override {
     Sequence::updateSoundData(data);
-
     _soundData.updateBuffer(data);
   }
-
 };
 
 #endif //TREELIGHTS_EXAMPLESEQUENCE_H

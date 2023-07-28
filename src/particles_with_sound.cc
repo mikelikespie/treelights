@@ -54,7 +54,7 @@ const int stripCount = 4;
 const int realStripLength = 118;
 static const int totalLedCount = realStripLength * stripCount;
 static ARGB leds[totalLedCount];
-unique_ptr <Sequence> currentSequences[stripCount];
+unique_ptr<Sequence> currentSequences[stripCount];
 Clock sharedClock;
 
 
@@ -67,7 +67,7 @@ void writeEndFrame(size_t ledCount);
 void writeBuffer();
 
 
-vector <Context> contexts{
+vector<Context> contexts{
         Context(leds + realStripLength * 0, realStripLength, false),
         Context(leds + realStripLength * 1, realStripLength, false),
         Context(leds + realStripLength * 2, realStripLength, false),
