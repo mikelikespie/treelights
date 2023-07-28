@@ -5,13 +5,23 @@ load(
 )
 
 cc_library(
-    name = "lib_to_make_clion_happy",
+    name = "lib_clion",
     srcs = glob([
         "**/*.cc",
         "**/*.cpp",
         "**/*.h",
     ]),
-    deps = [],
+    copts = [
+        # Just to make autocomplete happy
+        "-I/Applications/Teensyduino.app/Contents/Java/hardware/teensy/avr/cores/teensy4",
+        "-I/Applications/Teensyduino.app/Contents/Java/hardware/teensy/avr/libraries/Audio",
+        "-I/Applications/Teensyduino.app/Contents/Java/hardware/teensy/avr/libraries/Wire",
+        "-I/Applications/Teensyduino.app/Contents/Java/hardware/teensy/avr/libraries/SD/src",
+        "-I/Applications/Teensyduino.app/Contents/Java/hardware/teensy/avr/libraries/SerialFlash",
+        "-DSEREMU_INTERFACE",
+    ],
+    visibility = ["//visibility:public"],
+    deps = ["//deps/SPI:SPI_clion"],
 )
 
 platformio_library(
@@ -29,6 +39,7 @@ platformio_library(
         "SinWaveSequence.h",
         "ParticleEffectSequence.h",
         "SoundHistogramSequence.h",
+        "SoundReactiveParticleEffectSequence.h",
         "SoundData.h",
     ],
     add_srcs = [

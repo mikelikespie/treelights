@@ -40,14 +40,13 @@ public:
     const int halfLength = length / 2;
     float hueStart = std::max<float>(0.0f,
                                      std::min(1.0f,
-                                              (float) ( pixel) / length)
+                                              (float) (pixel) / length)
 //                                              (float) (halfLength - std::abs(pixel - halfLength)) / halfLength)
-                                              );
+    );
     return HSV{
-      hueStart * 1.2f + .2,
-//            .6f,
+            hueStart * 1.2f + .2f,
             1.0f,
-            _soundData.getValueForPixel(length - pixel, length) };
+            _soundData.getValueForPixel(length - pixel, length)};
   }
 
   virtual const std::vector<Control *> &controls() {

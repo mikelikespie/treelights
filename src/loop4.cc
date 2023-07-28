@@ -5,6 +5,8 @@ extern "C" int _getpid(void) { return 1; }
 
 #include <SPI.h>
 #include <usb_serial.h>
+#include <HardwareSerial.h>
+#include <usb_seremu.h>
 
 //#include </Applications/Arduino.app/Contents/Java/hardware/teensy/avr/libraries/SPI/SPI.h>
 

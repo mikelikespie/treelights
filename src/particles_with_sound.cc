@@ -19,6 +19,8 @@ extern "C" int _getpid(void) { return 1; }
 #include <SPI.h>
 #include <SD.h>
 #include <SerialFlash.h>
+#include <HardwareSerial.h>
+#include <usb_seremu.h>
 
 #include <algorithm>
 
