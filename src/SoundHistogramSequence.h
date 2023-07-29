@@ -44,7 +44,7 @@ public:
 //                                              (float) (halfLength - std::abs(pixel - halfLength)) / halfLength)
     );
     return HSV{
-            hueStart * 1.2f + .2f,
+            hueStart * 1.0f + .2f,
             1.0f,
             _soundData.getValueForPixel(length - pixel, length)};
   }
