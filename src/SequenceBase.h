@@ -8,7 +8,10 @@
 
 class Control;
 
+static const std::vector<Control *> emptyControlsVector {};
+
 class Sequence {
+
 public:
   virtual void loop(Context *context) = 0;
 
@@ -17,15 +20,15 @@ public:
 
   /// You should return your controls here. Default implementation is empty vector
   virtual const std::vector<Control *> &controls() {
-    static const std::vector<Control *> emptyImplementation{};
-
-    return emptyImplementation;
+    return emptyControlsVector;
   }
 
   /// Can optionally implement to handle data from sound ffts.
   virtual void updateSoundData(const SoundDataBuffer data) {
     // Default is a noop
   }
+
+  virtual ~Sequence() = default;
 };
 
 // See ExampleSequence.cpp for exampple
@@ -37,7 +40,7 @@ public:
 
   }
 
-  virtual void loop(Context *context) {
+  void loop(Context *context) override {
     for (int pixel = 0; pixel < _stripLength; ++pixel) {
       ARGB c = static_cast<T *>(this)->colorForPixel(pixel, *context);
       context->setColor(pixel, c);
@@ -52,6 +55,8 @@ public:
   const Clock &clock() {
     return _clock;
   }
+
+  ~SequenceBase() override = default;
 
 private:
   const Clock &_clock;

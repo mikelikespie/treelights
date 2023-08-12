@@ -14,29 +14,29 @@
 #include <random>
 #include <ctime>
 
-const float BASS_START = 20.0f;
-const float MID_START = 500.0f;
+const float BASS_START = 1.0f;
+const float MID_START = 300.0f;
 const float TREBLE_START = 4000.0f;
-const float MAX_FREQUENCY = 20000.0f;
+const float MAX_FREQUENCY = 30000.0f;
 
 
-struct Particle {
-  float position;
-  float velocity;
-
-  float hue;
-  float saturation;
-  float value;
-  float age;
-
-  /// This is a value between 0 and 1 that represents how much the particle has decayed.
-  /// for stuff like sparks, we want it to be very low. For stuff like fire, we want it to be high
-  float valueDecayK;
-};
-
-class ParticleEffectSequence : public SequenceBase<ParticleEffectSequence> {
+class SoundReactiveParticleEffectSequence : public SequenceBase<SoundReactiveParticleEffectSequence> {
 public:
-  ParticleEffectSequence(std::mt19937 *gen, int stripLength, const Clock &clock)
+  struct Particle {
+    float position;
+    float velocity;
+
+    float hue;
+    float saturation;
+    float value;
+    float age;
+
+    /// This is a value between 0 and 1 that represents how much the particle has decayed.
+    /// for stuff like sparks, we want it to be very low. For stuff like fire, we want it to be high
+    float valueDecayK;
+  };
+
+  SoundReactiveParticleEffectSequence(std::mt19937 *gen, int stripLength, const Clock &clock)
           : SequenceBase(stripLength, clock), gen(gen), _hueOffset(0) {
     _buffer1.resize((size_t) (stripLength), RGBLinear{0, 0, 0});
     _buffer2.resize((size_t) (stripLength), RGBLinear{0, 0, 0});
@@ -71,37 +71,19 @@ public:
   }
 
   void updateParticles(float deltat, float ax) {
-    bool create_pixel = distribution(*gen) >
-                        expf(generation_k() * -deltat * (fabsf(ax) * 60.0f + 0.2f) * _generationAmount.value());
+//    bool create_pixel = distribution(*gen) >
+//                        expf(generation_k() * -deltat * (fabsf(ax) * 60.0f + 0.2f) * _generationAmount.value());
 
 //    int number_of_pixels_to_create = distribution
     // Similar to create pixel, and uses same distribution, but calculates nubmer of pixes to be created, which can
     // infinite, but unlikely since its a uniform distribution
 
-    int number_of_bass_pixels_to_create = std::min(100, (int) (distribution(*gen) * 100 * _bassMagnitude));
-    int number_of_mid_pixels_to_create = std::min(100, (int) (distribution(*gen) * 100 * _midMagnitude));
-    int number_of_treble_pixels_to_create = std::min(100, (int) (distribution(*gen) * 100 * _trebleMagnitude));
+    int number_of_bass_pixels_to_create = std::min(100, (int) (distribution(*gen) * .08 * _bassMagnitude + .965));
+    int number_of_mid_pixels_to_create = std::min(100, (int) (distribution(*gen) * .25 * _midMagnitude + .8));
+    int number_of_treble_pixels_to_create = std::min(100, (int) (distribution(*gen) * .08 * _trebleMagnitude + .97));
 
     const float min_position = -0.4f;
     const float max_position = 1.4f;
-
-
-    if (create_pixel && _particles.size() < 100) {
-      std::uniform_real_distribution<float> spawn_distribution(min_position, max_position);
-
-      float hue = calculateHue();
-      float brightness = lightnessDistribution(*gen);
-      float saturation = distribution(*gen);
-
-      saturation = sqrtf(saturation) * 0.5 + 0.5;
-      brightness *= brightness;
-
-      _particles.emplace_back(
-              Particle{(ax > 0 ? 1.0f : 0.0f) + std::normal_distribution<float>(0.0f, 0.04f)(*gen),
-                       std::normal_distribution<float>(1.2f, 0.04f)(*gen),
-                       hue,
-                       saturation, brightness, 0});
-    }
 
     // update velocity
 
@@ -111,13 +93,107 @@ public:
     for (auto &p: _particles) {
       p.velocity *= velocity_decay;
       p.velocity += delta_a;
-      p.position += p.velocity * deltat;
+      p.position += p.velocity * deltat * ((_bassMagnitude * 1.3) * (_bassMagnitude * 1.3) + .025 ); // TODO make specific to only some particles
       p.age += deltat;
+
+      if (p.valueDecayK > 0) {
+        float value_decay = expf(-deltat * p.valueDecayK);
+        p.value *= value_decay;
+      }
     }
+
+    for (int i = 0; i <  number_of_bass_pixels_to_create  && _particles.size() < 300; i++) {
+      std::uniform_real_distribution<float> spawn_distribution(min_position, max_position);
+
+//      float hue = calculateBassHue();
+      float brightness = lightnessDistribution(*gen);
+      float saturation = distribution(*gen);
+
+      saturation = sqrtf(saturation) * 0.5 + 0.5;
+      brightness *= brightness;
+
+      _particles.emplace_back(
+              Particle{(ax > 0 ? 1.0f : 0.0f) + std::normal_distribution<float>(0.0f, 0.04f)(*gen),
+                       std::normal_distribution<float>(1.2f, 0.04f)(*gen),
+                       .95,
+                       1, brightness, 0, 1});
+    }
+
+    for (int i = 0; i <  number_of_mid_pixels_to_create  && _particles.size() < 300; i++) {
+      std::uniform_real_distribution<float> spawn_distribution(min_position, max_position);
+
+//      float hue = calculateBassHue();
+      float brightness = lightnessDistribution(*gen);
+      float saturation = distribution(*gen);
+
+      saturation = sqrtf(saturation) * 0.5 + 0.5;
+      brightness *= brightness;
+
+      _particles.emplace_back(
+              Particle{(ax > 0 ? 1.0f : 0.0f) + std::normal_distribution<float>(0.0f, 0.04f)(*gen),
+                       std::normal_distribution<float>(1.2f, 0.04f)(*gen),
+                       .75,
+                       1, brightness, 0, 2});
+    }
+    for (int i = 0; i <  number_of_treble_pixels_to_create  && _particles.size() < 300; i++) {
+      std::uniform_real_distribution<float> spawn_distribution(min_position, max_position);
+
+//      float hue = calculateBassHue();
+      float brightness = lightnessDistribution(*gen);
+//      float saturation = distribution(*gen);
+
+//      saturation = sqrtf(saturation) * 0.5 + 0.5;
+      brightness *= brightness;
+
+      _particles.emplace_back(
+              Particle{(ax > 0 ? 1.0f : 0.0f) + std::normal_distribution<float>(0.0f, 0.04f)(*gen),
+                       std::normal_distribution<float>(1.2f, 0.04f)(*gen),
+                       .6,
+                       1, brightness, 0, 3});
+    }
+//    for (int i = 0; i < number_of_mid_pixels_to_create  && _particles.size() < 300; i++) {
+//      std::uniform_real_distribution<float> spawn_distribution(min_position, max_position);
+//
+//      float hue = calculateMidHue();
+//      float brightness = lightnessDistribution(*gen);
+//      float saturation = distribution(*gen);
+//
+//      saturation = sqrtf(saturation) * 0.5 + 0.5;
+//      brightness *= brightness;
+//
+//      _particles.emplace_back(
+//              Particle{(ax > 0 ? 1.0f : 0.0f) + std::normal_distribution<float>(0.0f, 0.08f)(*gen),
+//                       std::normal_distribution<float>(1.2f, 0.04f)(*gen),
+//                       hue,
+//                       saturation,
+//                       brightness, 0, .1});
+//    }
+
+//    for (int i = 0; i < number_of_treble_pixels_to_create  && _particles.size() < 300; i++) {
+//      std::uniform_real_distribution<float> spawn_distribution(min_position, max_position);
+//
+//      float hue = calculateTrebleHue();
+//      float brightness = sparkLightnessDistribution(*gen);
+//      float saturation = distribution(*gen);
+//
+//      saturation = sqrtf(saturation) * 0.5 + 0.5;
+//      brightness *= brightness;
+//
+//      _particles.emplace_back(
+//              Particle{std::uniform_real_distribution<float>(0.0f, 1)(*gen),
+//                      0,
+//                       hue,
+//                       0,
+//                       brightness, 0,
+//                       30});
+//    }
+
+
+
 
     _particles.erase(std::remove_if(_particles.begin(), _particles.end(),
                                     [&](Particle p) {
-                                      return p.position < min_position || p.position > max_position;
+                                      return p.position < min_position || p.position > max_position || p.value < .001f;
                                     }), _particles.end());
 
 
@@ -151,7 +227,7 @@ public:
       const float portion = 1.0f - distance;
       const float adjustedValue = value * portion;
 
-      const RGBLinear newColor = HSV{hue, 1.0f, adjustedValue * fadeInMultiple};
+      const RGBLinear newColor = HSV{hue, saturation, adjustedValue * fadeInMultiple};
 
       auto &pixel = _buffer1[pixelIndex];
 
@@ -169,15 +245,15 @@ public:
 
   virtual void loop(Context *context) {
     float deltat = clock().deltaf();
-    _hueSliceMin = _hueSlicePhase.value() - _hueSliceSizeControl.value() * .5f;
-    _hueSliceMax = _hueSlicePhase.value() + _hueSliceSizeControl.value() * .5f;
+    _hueSliceMidMax = _hueSlicePhase.value() - _hueSliceSizeControl.value() * .5f;
+    _hueSliceMidMax = _hueSlicePhase.value() + _hueSliceSizeControl.value() * .5f;
 
 
     for (auto &p: _buffer1) {
       p = RGBLinear{0, 0, 0};
     }
 
-    float ax = -.005;
+    float ax = -.0001;
     updateParticles(deltat, ax);
     paintParticles(deltat);
     decayPixels(deltat);
@@ -201,6 +277,8 @@ public:
     return 20;
   }
 
+  ~SoundReactiveParticleEffectSequence() override = default;
+
   void updateSoundData(const float *data) override {
     SequenceBase::updateSoundData(data);
     _soundData.updateBuffer(data);
@@ -215,6 +293,7 @@ private:
   std::mt19937 *gen;
   std::uniform_real_distribution<> distribution = std::uniform_real_distribution<>(0, 1);
   std::uniform_real_distribution<> lightnessDistribution = std::uniform_real_distribution<>(0.8, 1.2);
+  std::uniform_real_distribution<> sparkLightnessDistribution = std::uniform_real_distribution<>(0.3, 1.2);
 
   float _bassMagnitude = 0;
   float _midMagnitude = 0;
@@ -232,16 +311,23 @@ private:
           &_generationAmount,
   };
 
-  float _hueSliceMin;
-  float _hueSliceMax;
+  float _hueSliceBassMin{};
+  float _hueSliceBassMax{};
+
+  float _hueSliceMidMin{};
+  float _hueSliceMidMax{};
+
+//  float _hueSliceTrebleMin;
+//  float _hueSliceTrebleMax;
+
   const float _hueOffset;
 
 private:
   SoundData _soundData;
 
-  inline float calculateHue() {
-    const float minhue = _hueSliceMin;
-    const float maxhue = _hueSliceMax;
+  inline float calculateBassHue() {
+    const float minhue = _hueSliceBassMin;
+    const float maxhue = _hueSliceBassMax;
     std::uniform_real_distribution<float> dist(minhue, maxhue);
     float hue = dist(*gen) + _hueOffset;
 
@@ -252,6 +338,26 @@ private:
     }
 
     return hue;
+  }
+
+  inline float calculateMidHue() {
+    const float minhue = _hueSliceMidMin;
+    const float maxhue = _hueSliceMidMax;
+    std::uniform_real_distribution<float> dist(minhue, maxhue);
+    float hue = dist(*gen) + _hueOffset;
+
+    if (hue < 0) {
+      hue -= floorf(hue);
+    } else {
+      hue = fmodf(hue, 1.0);
+    }
+
+    return hue;
+  }
+
+  inline float calculateTrebleHue() {
+//     returns yellow hue
+    return 0.15f;
   }
 };
 

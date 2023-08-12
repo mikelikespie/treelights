@@ -14,6 +14,7 @@
 extern "C" int _kill(int pid, int sig) { return 0; }
 extern "C" int _getpid(void) { return 1; }
 
+#include <cstdint>
 #include <Audio.h>
 #include <Wire.h>
 #include <SPI.h>
@@ -21,6 +22,7 @@ extern "C" int _getpid(void) { return 1; }
 #include <SerialFlash.h>
 #include <HardwareSerial.h>
 #include <usb_seremu.h>
+#include <TeensyDMX.h>
 
 #include <algorithm>
 
@@ -46,7 +48,13 @@ extern "C" int _getpid(void) { return 1; }
 #include "SinWaveSequence.h"
 #include "ParticleEffectSequence.h"
 #include "SoundHistogramSequence.h"
+#include "SoundReactiveParticleEffectSequence.h"
 
+
+namespace teensydmx = ::qindesign::teensydmx;
+
+// Create the DMX receiver on Serial1.
+teensydmx::Receiver dmxRx{Serial1};
 
 using namespace std;
 
@@ -54,7 +62,6 @@ const int stripCount = 4;
 const int realStripLength = 118;
 static const int totalLedCount = realStripLength * stripCount;
 static ARGB leds[totalLedCount];
-unique_ptr<Sequence> currentSequences[stripCount];
 Clock sharedClock;
 
 
@@ -67,7 +74,7 @@ void writeEndFrame(size_t ledCount);
 void writeBuffer();
 
 
-vector<Context> contexts{
+Context contexts[stripCount] = {
         Context(leds + realStripLength * 0, realStripLength, false),
         Context(leds + realStripLength * 1, realStripLength, false),
         Context(leds + realStripLength * 2, realStripLength, false),
@@ -80,37 +87,62 @@ std::mt19937 gen(0);
 int currentSequenceIndex = -1;
 
 
-const std::vector<Sequence *(*)()> sequences = {
+typedef Sequence *(*SequenceFactory)();
+
+const SequenceFactory sequences[] = {
+        []() -> Sequence * { return new BurningFlambeosSequence(realStripLength, sharedClock); },
+        []() -> Sequence * { return new ParticleEffectSequence(&gen, realStripLength, sharedClock); },
+        []() -> Sequence * { return new SinWaveSequence(realStripLength, sharedClock); },
         []() -> Sequence * {
           return new SoundHistogramSequence(realStripLength, sharedClock);
-          return new HSVSequence(realStripLength, sharedClock);
-          return new ParticleEffectSequence(&gen, realStripLength, sharedClock);
         },
-//        [&]() -> Sequence * { return new BurningFlambeosSequence(realStripLength, sharedClock); },
+        []() -> Sequence * { return new SoundReactiveParticleEffectSequence(&gen, realStripLength, sharedClock); },
+        []() -> Sequence * { return new HSVSequence(realStripLength, sharedClock); },
+        []() -> Sequence * { return new RGBSequence(realStripLength, sharedClock); },
 };
+
+const int sequenceCount = sizeof(sequences) / sizeof(SequenceFactory);
+
+// we want to cache sequences after they've been initialized
+// so we don't have to reinitialize them every time we switch to them. Mostly to work around a crash when deleting.
+// Also if we don't realloc we wont fragment memory.
+typedef Sequence *SequencesForAllStrips[stripCount];
+
+SequencesForAllStrips instantiatedSequences[sequenceCount] = {{nullptr}};
+
+LinearlyInterpolatedValueControl<int> visualizationControl(0, sequenceCount - 1, 0);
+
 
 const int slaveSelectPin = 7;
 
 const int myInput = AUDIO_INPUT_LINEIN;
-//const int myInput = AUDIO_INPUT_MIC;
 
-// Create the Audio components.  These should be created in the
-// order data flows, inputs/sources -> processing -> outputs
-//
 AudioInputI2S audioInput;         // audio shield: mic or line-in
-AudioSynthWaveformSine sinewave;
 AudioAnalyzeFFT1024 myFFT;
-AudioOutputI2S audioOutput;        // audio shield: headphones & line-out
 
 // Connect either the live input or synthesized sine wave
-AudioConnection patchCord1(audioInput, 0, myFFT, 0);
+__attribute__((unused)) AudioConnection patchCord1(audioInput, 0, myFFT, 0);
 
 AudioControlSGTL5000 audioShield;
 
 
 SoundDataBuffer soundDataBuffer;
 
+const int8_t DMX_CHANNEL_COUNT = 16;
+
+// Last 16 of 192 channels. 0-indexed.
+const int DMX_START_CHANNEL = 0;
+
+const int8_t DMX_VISUALIZATION_CONTROL_NUM = 7;
+
+uint8_t dmxValues[DMX_CHANNEL_COUNT] = {0};
+
 void setup() {
+  while (!Serial); // wait for serial monitor open
+  if (CrashReport) {
+    Serial.print(CrashReport);
+    delay(2);
+  }
 
   // Audio connections require memory to work.  For more
   // detailed information, see the MemoryAndCpuUsage example
@@ -121,16 +153,9 @@ void setup() {
   audioShield.inputSelect(myInput);
   audioShield.volume(0.5);
 
-  // Configure the window algorithm to use
   myFFT.windowFunction(AudioWindowHanning1024);
-  //myFFT.windowFunction(NULL);
 
-  // Create a synthetic sine wave, for testing
-  // To use this, edit the connections above
-  sinewave.amplitude(0.8);
-  sinewave.frequency(1034.007);
-
-
+  // Start serial
   Serial.begin(115200);
 
   // set the slaveSelectPin as an output:
@@ -139,66 +164,80 @@ void setup() {
   SPI.begin();
 
   digitalWrite(slaveSelectPin, HIGH);  // enable access to LEDs
+
+  dmxRx.begin();
+
+  // Delay a bit so we can have a dmx value by the time we start
+  delay(500);
 }
 
 
 void loop() {
   sharedClock.tick();
 
-  int i;
 
 
-  int newSequenceIndex = 0;
 
+  // Read DMX data
+  // TODO: only read if there's new data
+  for (int i = 0; i < DMX_CHANNEL_COUNT; i++) {
+    uint8_t newValue = dmxRx.get(DMX_START_CHANNEL + i + 1);
+//    if (newValue != dmxValues[i]) {
+//      Serial.print("DMX ");
+//      Serial.print(i);
+//      Serial.print(" to ");
+//      Serial.println(newValue);
+//    }
+    dmxValues[i] = newValue;
+  }
+
+  visualizationControl.tick(sharedClock,
+                            dmxValues[
+                                    DMX_VISUALIZATION_CONTROL_NUM] / 255.0f);
+
+  int newSequenceIndex = visualizationControl.value();
 
   if (newSequenceIndex != currentSequenceIndex) {
-    Serial.print("x to ");
-    Serial.print(newSequenceIndex);
-    Serial.println(".");
-    Serial.println("initializing");
+//    Serial.print("x to ");
+//    Serial.print(newSequenceIndex);
+//    Serial.println(".");
+//    Serial.println("initializing");
 
     currentSequenceIndex = newSequenceIndex;
-    for (auto &currentSequence: currentSequences) {
-      Serial.println("resetting");
+    auto &currentSequences = instantiatedSequences[currentSequenceIndex];
 
-      currentSequence.reset(sequences[currentSequenceIndex]());
-      currentSequence->initialize();
-      currentSequence->updateSoundData(soundDataBuffer);
-      Serial.println("reseted");
+    for (int i = 0; i < stripCount; i++) {
+      if (currentSequences[i] == nullptr) {
+        auto newSequence = sequences[currentSequenceIndex]();
+        currentSequences[i] = newSequence;
+        newSequence->initialize();
+        continue;
+      }
+      auto newSequence = sequences[currentSequenceIndex]();
+      currentSequences[i]->updateSoundData(soundDataBuffer);
     }
-    Serial.println("Initialized");
   }
 
 
   if (myFFT.available()) {
-    // each time new FFT data is available
-    // print it all to the Arduino Serial Monitor
-//    Serial.print("FFT: ");
-    // read the 512 FFT frequencies into 16 levels
-    // music is heard in octaves, but the FFT data
-    // is linear, so for the higher octaves, read
-    // many FFT bins together.
-    for (i = 0; i < SOUND_BUFFER_BIN_COUNT; i++) {
+    for (int i = 0; i < SOUND_BUFFER_BIN_COUNT; i++) {
       soundDataBuffer[i] = myFFT.read(i);
     }
 
-    for (auto &currentSequence: currentSequences) {
+    for (auto &currentSequence: instantiatedSequences[currentSequenceIndex]) {
       currentSequence->updateSoundData(soundDataBuffer);
     }
   }
 
-
   int contextIndex = 0;
-  for (auto &currentSequence: currentSequences) {
+  for (auto &currentSequence: instantiatedSequences[currentSequenceIndex]) {
     const std::vector<Control *> *currentControls = &currentSequence->controls();
 
-//    auto iter = currentControls->begin();
-    if (currentControls->size()) {
-//            ++iter;
-//      for (int i = 0; i < 32 && iter != currentControls->end(); ++i) {
-//        (*iter)->tick(sharedClock, fftLevels[i]);
-//        ++iter;
-//      }
+    auto iter = currentControls->begin();
+    if (!currentControls->empty()) {
+      for (int i = 0; i < DMX_CHANNEL_COUNT && iter != currentControls->end(); ++i, ++iter) {
+        (*iter)->tick(sharedClock, (float) dmxValues[i] / 255.0f);
+      }
     }
 
     currentSequence->loop(&contexts[contextIndex]);
@@ -206,7 +245,6 @@ void loop() {
   }
 
   writeBuffer();
-
 }
 
 
