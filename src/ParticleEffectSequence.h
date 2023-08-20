@@ -119,7 +119,7 @@ public:
     const int closestIndex = (int) (pixelPos);
 
 
-    const float fadeInMultiple = 1.0f - expf(-age);
+    const float fadeInMultiple = 1.0f - expf(-age * 30);
 
 
 //        float decay = 1.0;
@@ -153,8 +153,9 @@ public:
 
   virtual void loop(Context *context) {
     float deltat = clock().deltaf();
-    _hueSliceMin = _hueSlicePhase.value() - _hueSliceSizeControl.value() * .5f;
-    _hueSliceMax = _hueSlicePhase.value() + _hueSliceSizeControl.value() * .5f;
+    float hueSlicePhase = std::fmod<float>(_hueSlicePhase.value() + 1.0f, 1.0f);
+    _hueSliceMin = hueSlicePhase - _hueSliceSizeControl.value() * .5f;
+    _hueSliceMax = hueSlicePhase + _hueSliceSizeControl.value() * .5f;
 
 
     for (auto &p: _buffer1) {
@@ -162,7 +163,7 @@ public:
     }
 
 //        float ax = -(_ax.value() - 0.5f) * deltat * 2;
-    float ax = -.005;
+    float ax = -0.85f * deltat;
     updateParticles(deltat, ax);
     paintParticles(deltat);
     decayPixels(deltat);
@@ -196,9 +197,9 @@ private:
   std::uniform_real_distribution<> lightnessDistribution = std::uniform_real_distribution<>(0.8, 1.2);
 
   IdentityValueControl _ax = IdentityValueControl(.5); // This should probably be an accumulator
-  IdentityValueControl _hueSlicePhase = IdentityValueControl(.75);
-  IdentityValueControl _hueSliceSizeControl = IdentityValueControl(.3);
-  IdentityValueControl _generationAmount = IdentityValueControl(0.4);
+  IdentityValueControl _hueSlicePhase = IdentityValueControl(.00);
+  IdentityValueControl _hueSliceSizeControl = IdentityValueControl(.11);
+  IdentityValueControl _generationAmount = IdentityValueControl(0.8);
 
   const std::vector<Control *> _controls = {
           &_ax,

@@ -58,9 +58,14 @@ teensydmx::Receiver dmxRx{Serial1};
 
 using namespace std;
 
+
+static const int segmentLength = 18;
+static const int segmentCount = 30;
+
+const int realStripLength = segmentLength * segmentCount;
+
 const int stripCount = 1;
 //const int stripCount = 1;
-const int realStripLength = 118;
 static const int totalLedCount = realStripLength * stripCount;
 static ARGB leds[totalLedCount];
 Clock sharedClock;
@@ -77,13 +82,6 @@ void writeBuffer();
 
 Context contexts[stripCount] = {
         Context(leds + realStripLength * 0, realStripLength, false),
-//        Context(leds + realStripLength * 1, realStripLength, false),
-//        Context(leds + realStripLength * 2, realStripLength, false),
-//        Context(leds + realStripLength * 3, realStripLength, false),
-//        Context(leds + realStripLength * 4, realStripLength, false),
-//        Context(leds + realStripLength * 5, realStripLength, false),
-//        Context(leds + realStripLength * 6, realStripLength, false),
-//        Context(leds + realStripLength * 7, realStripLength, false),
 
 };
 
@@ -96,13 +94,9 @@ bool seenNonZeroDmxValue = false; // Don't start setting controls until we see d
 typedef Sequence *(*SequenceFactory)();
 
 const SequenceFactory sequences[] = {
-        []() -> Sequence * { return new ParticleEffectSequence(&gen, realStripLength, sharedClock); },
-        []() -> Sequence * { return new BurningFlambeosSequence(realStripLength, sharedClock); },
         []() -> Sequence * { return new SinWaveSequence(realStripLength, sharedClock); },
-        []() -> Sequence * {
-          return new SoundHistogramSequence(realStripLength, sharedClock);
-        },
-        []() -> Sequence * { return new SoundReactiveParticleEffectSequence(&gen, realStripLength, sharedClock); },
+        []() -> Sequence * { return new ParticleEffectSequence(&gen, realStripLength, sharedClock); },
+//        []() -> Sequence * { return new BurningFlambeosSequence(realStripLength, sharedClock); },
 //        []() -> Sequence * { return new HSVSequence(realStripLength, sharedClock); },
 //        []() -> Sequence * { return new RGBSequence(realStripLength, sharedClock); },
 };
@@ -245,13 +239,11 @@ void loop() {
     const std::vector<Control *> *currentControls = &currentSequence->controls();
 
     auto iter = currentControls->begin();
-    if (!currentControls->empty()) {
-      for (int i = 0; i < DMX_CHANNEL_COUNT && iter != currentControls->end(); ++i, ++iter) {
-        if (seenNonZeroDmxValue) {
-          (*iter)->tick(sharedClock, (float) dmxValues[i] / 255.0f);
-        } else {
-          (*iter)->tick(sharedClock);
-        }
+    for (int i = 0; i < DMX_CHANNEL_COUNT && iter != currentControls->end(); ++i, ++iter) {
+      if (seenNonZeroDmxValue) {
+        (*iter)->tick(sharedClock, (float) dmxValues[i] / 255.0f);
+      } else {
+        (*iter)->tick(sharedClock);
       }
     }
 
@@ -272,7 +264,7 @@ void loop() {
 }
 
 
-SPISettings APA102(2800000 * 4, MSBFIRST, SPI_MODE0);
+SPISettings APA102(2800000 * 2, MSBFIRST, SPI_MODE0);
 
 void writeBuffer() {
   SPI.beginTransaction(APA102);

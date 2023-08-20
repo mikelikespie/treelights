@@ -14,7 +14,6 @@
 
 #include "ledmath.h"
 
-//typedef BufferedControl<LinearlyInterpolatedValueControl<float>> SmoothLinearControl;
 class BurningFlambeosSequence : public SequenceBase<BurningFlambeosSequence> {
 
 
@@ -38,7 +37,7 @@ public:
   }
 
   inline ARGB colorForPixel(int pixel, const Context &context) {
-    float sinOffsetBase = (pixel + _centerOfWaveControl.value()) * M_TWOPI / _wavelength.value();
+    float sinOffsetBase = ((float)pixel - (float)stripLength() / 2.0f) * M_TWOPI / _wavelength.value();
 
     float sinOffsetV = sinOffsetBase + _lightnessPhase.value() / _wavelength.value();
 //        float v = (sinf(sinOffsetV) + 1) * 0.5f;
@@ -51,7 +50,7 @@ public:
     v = std::min(1.0f, v);
     v = std::max(0.0f, v);
 
-    float sinOffsetBaseH = (pixel + _centerOfWaveControl.value()) * M_TWOPI / _colorWavelength.value();
+    float sinOffsetBaseH = ((float)pixel - (float)stripLength() / 2.0f) * M_TWOPI / _colorWavelength.value();
 
     float sinOffsetH = sinOffsetBaseH + _colorPhase.value() / _colorWavelength.value();
 
@@ -60,7 +59,7 @@ public:
     float hue = calculateHue(sinOffsetAdjustedH);
 
 
-    return ((RGBLinear) (HSV{hue, 0.9, v * 0.5f})).convertWithJitter(generator);
+    return ((RGBLinear) (HSV{hue, 0.9f, v})).convertWithJitter(generator);
 //        return ARGB { 8, 255, 0, 0 };
   }
 
@@ -83,17 +82,17 @@ public:
   }
 
 private:
-  SmoothAccumulatorControl _lightnessPhase = SmoothAccumulatorControl(-525.0, 500.0,
+  SmoothAccumulatorControl _lightnessPhase = SmoothAccumulatorControl(525.0, -500.0,
                                                                       20); // This should probably be an accumulator
   SmoothAccumulatorControl _colorPhase = SmoothAccumulatorControl(-500.0, 500.0, -31);
   SmoothAccumulatorControl _hueSlicePhase = SmoothAccumulatorControl(0.0001, 0.035, 0.015);
 
   std::mt19937 generator = std::mt19937(0);
-  SmoothLinearControl _wavelength = SmoothLinearControl(1, 18, 8.5);
-  SmoothLinearControl _colorWavelength = SmoothLinearControl(4, 150, 120);
-  SmoothLinearControl _centerOfWaveControl = SmoothLinearControl(-stripLength(), 0, 0.5);
+  SmoothLinearControl _wavelength = SmoothLinearControl (10, 100, 8.5);
+  SmoothLinearControl _colorWavelength = SmoothLinearControl(20, 150, 120);
+  SmoothLinearControl _centerOfWaveControl = SmoothLinearControl(-stripLength(), 0, stripLength() / -2);
   SmoothLinearControl _hueSliceSizeControl = SmoothLinearControl(0.01, 0.33, 0.15);
-  SmoothLinearControl _saturationControl = SmoothLinearControl(1, 1, 1);
+//  SmoothLinearControl _saturationControl = SmoothLinearControl(1, 1, 1);
 
   float _hueSliceMin = 0;
   float _hueSliceMax = 0;
@@ -104,8 +103,8 @@ private:
           &_hueSlicePhase,
           &_hueSliceSizeControl,
           &_colorWavelength,
-          &_centerOfWaveControl,
-          &_saturationControl,
+//          &_centerOfWaveControl,
+//          &_saturationControl,
   };
 };
 

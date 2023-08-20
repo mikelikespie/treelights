@@ -233,7 +233,7 @@ void loop() {
         ++iter;
       }
       //            (*currentControls)[0]->tick(sharedClock, -ax + 0.5);
-    }
+     }
 
     currentSequence->loop(&contexts[contextIndex]);
     contextIndex++;

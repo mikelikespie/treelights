@@ -11,7 +11,8 @@
 #include "SequenceBase.h"
 #include "ledmath.h"
 
-#include <math.h>
+#define _USE_MATH_DEFINES
+#include <cmath>
 
 
 class SinWaveSequence : public SequenceBase<SinWaveSequence> {
@@ -35,14 +36,14 @@ public:
     }
 
     inline ARGB colorForPixel(int pixel, const Context &context) {
-        float sinOffsetBase = (pixel + _centerOfWaveControl.value()) * M_TWOPI / _wavelength.value();
+        float sinOffsetBase = ((float)pixel - (float)stripLength() / 2.0f) * M_TWOPI / _wavelength.value();
 
         float sinOffsetV = sinOffsetBase +  _lightnessPhase.value() / _wavelength.value();
 //        float v = (sinf(sinOffsetV) + 1) * 0.5f;
         float v = sawtooth(sinOffsetV / M_TWOPI);
         v *= v;
 
-        float sinOffsetBaseH = (pixel + _centerOfWaveControl.value()) * M_TWOPI / _colorWavelength.value();
+        float sinOffsetBaseH = ((float)pixel - (float)stripLength() / 2.0f) * M_TWOPI / _colorWavelength.value();
 
         float sinOffsetH = sinOffsetBaseH + _colorPhase.value() / _colorWavelength.value();
 
@@ -51,7 +52,7 @@ public:
         float hue = calculateHue(sinOffsetAdjustedH);
 
 
-        return ((RGBLinear)(HSV { hue, 1.0, v * 0.2f })).convertWithJitter(generator);
+        return ((RGBLinear)(HSV { hue, 1.0, v })).convertWithJitter(generator);
 //        return ARGB { 8, 255, 0, 0 };
     }
 
@@ -73,16 +74,16 @@ public:
         return _controls;
     }
 private:
-    SmoothAccumulatorControl _lightnessPhase = SmoothAccumulatorControl(-5.0, 4.0); // This should probably be an accumulator
-    SmoothAccumulatorControl _colorPhase = SmoothAccumulatorControl(-500.0, 500.0);
-    SmoothAccumulatorControl _hueSlicePhase = SmoothAccumulatorControl(0.0001, 0.035);
+    SmoothAccumulatorControl _lightnessPhase = SmoothAccumulatorControl(1000.0, -1300.0, 23); // This should probably be an accumulator
+    SmoothAccumulatorControl _colorPhase = SmoothAccumulatorControl(1000.0, -1300.0, 32);
+    SmoothAccumulatorControl _hueSlicePhase = SmoothAccumulatorControl(0.0001, 0.035, 0.0025);
 
     std::mt19937 generator = std::mt19937(0);
-    SmoothLinearControl _wavelength = SmoothLinearControl(1, 18);
-    SmoothLinearControl _colorWavelength = SmoothLinearControl(4, 43);
-    SmoothLinearControl _centerOfWaveControl = SmoothLinearControl(-stripLength(), 0);
-    SmoothLinearControl _hueSliceSizeControl = SmoothLinearControl(0.01, 0.33);
-    SmoothLinearControl _saturationControl = SmoothLinearControl(1, 1);
+    SmoothLinearControl _wavelength = SmoothLinearControl(10, 200, 18);
+    SmoothLinearControl _colorWavelength = SmoothLinearControl(20, 60, 27);
+//    SmoothLinearControl _centerOfWaveControl = SmoothLinearControl(-stripLength(), 0);
+    SmoothLinearControl _hueSliceSizeControl = SmoothLinearControl(0.01, 0.33, .18);
+//    SmoothLinearControl _saturationControl = SmoothLinearControl(1, 1);
     
     float _hueSliceMin = 0;
     float _hueSliceMax = 0;
@@ -93,8 +94,8 @@ private:
         &_hueSlicePhase,
         &_hueSliceSizeControl,
         &_colorWavelength,
-        &_centerOfWaveControl,
-        &_saturationControl,
+//        &_centerOfWaveControl,
+//        &_saturationControl,
     };
 };
 

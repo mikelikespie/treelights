@@ -26,11 +26,12 @@ public:
 template<typename ValueType>
 class ValueControl : public Control {
 public:
-  virtual void tick(const Clock &clock, float inputValue);
+  void tick(const Clock &clock, float inputValue) override;
 
-  virtual void tick(const Clock &clock);
+  void tick(const Clock &clock) override;
 
-  ValueControl() {}
+  ValueControl() : _value(0) {
+  };
 
   explicit ValueControl(ValueType defaultValue) : _value(defaultValue) {}
 
@@ -58,7 +59,7 @@ class BufferedControl : public ValueControl<float> {
 public:
   template<typename ...WrappedControlTypeArgs>
   BufferedControl(WrappedControlTypeArgs... wrappedControlArgs) : _wrappedControl(wrappedControlArgs...) {
-
+//    _actualValue = _wrappedControl.value();
   }
 
   virtual void tick(const Clock &clock, float inputValue) {
@@ -194,6 +195,7 @@ template
 class LinearlyInterpolatedValueControl<float>;
 
 typedef LinearlyInterpolatedValueControl<float> SmoothLinearControl;
-typedef AccumulatorControl<SmoothLinearControl> SmoothAccumulatorControl;
+typedef AccumulatorControl<LinearlyInterpolatedValueControl<float>> SmoothAccumulatorControl;
+//typedef BufferedControl<LinearlyInterpolatedValueControl<float>> SmoothLinearControl;
 
 #endif //TREELIGHTS_CONTROL_H
