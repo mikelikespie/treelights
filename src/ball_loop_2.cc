@@ -94,7 +94,7 @@ bool seenNonZeroDmxValue = false; // Don't start setting controls until we see d
 typedef Sequence *(*SequenceFactory)();
 
 const SequenceFactory sequences[] = {
-        []() -> Sequence * { return new SinWaveSequence(realStripLength, sharedClock); },
+        []() -> Sequence * { return new SinWaveSequence(realStripLength, sharedClock, .5); },
         []() -> Sequence * { return new ParticleEffectSequence(&gen, realStripLength, sharedClock); },
 //        []() -> Sequence * { return new BurningFlambeosSequence(realStripLength, sharedClock); },
 //        []() -> Sequence * { return new HSVSequence(realStripLength, sharedClock); },

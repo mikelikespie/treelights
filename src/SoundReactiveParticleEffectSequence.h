@@ -55,18 +55,18 @@ public:
     for (int i = 0; i < size; i++) {
       auto &dest = _buffer2[i];
       const auto &src = _buffer1[i];
-
-      dest.r = powf(sqrtf(dest.r) * multiple + sqrtf(src.r) * otherMultiple, 2.0f);
-      dest.g = powf(sqrtf(dest.g) * multiple + sqrtf(src.g) * otherMultiple, 2.0f);
-      dest.b = powf(sqrtf(dest.b) * multiple + sqrtf(src.b) * otherMultiple, 2.0f);
-
-      dest.r = std::max(std::min(dest.r, 1.0f), 0.0f);
-      dest.g = std::max(std::min(dest.g, 1.0f), 0.0f);
-      dest.b = std::max(std::min(dest.b, 1.0f), 0.0f);
-
-      if (i == 0) {
-        dest = src;
-      }
+//
+//      dest.r = powf(sqrtf(dest.r) * multiple + sqrtf(src.r) * otherMultiple, 2.0f);
+//      dest.g = powf(sqrtf(dest.g) * multiple + sqrtf(src.g) * otherMultiple, 2.0f);
+//      dest.b = powf(sqrtf(dest.b) * multiple + sqrtf(src.b) * otherMultiple, 2.0f);
+//
+//      dest.r = std::max(std::min(dest.r, 1.0f), 0.0f);
+//      dest.g = std::max(std::min(dest.g, 1.0f), 0.0f);
+//      dest.b = std::max(std::min(dest.b, 1.0f), 0.0f);
+//
+//      if (i == 0) {
+      dest = src;
+//      }
     }
   }
 
@@ -78,9 +78,13 @@ public:
     // Similar to create pixel, and uses same distribution, but calculates nubmer of pixes to be created, which can
     // infinite, but unlikely since its a uniform distribution
 
-    int number_of_bass_pixels_to_create = std::min(100, (int) (distribution(*gen) * .08 * _bassMagnitude + .965));
-    int number_of_mid_pixels_to_create = std::min(100, (int) (distribution(*gen) * .25 * _midMagnitude + .8));
-    int number_of_treble_pixels_to_create = std::min(100, (int) (distribution(*gen) * .08 * _trebleMagnitude + .97));
+    int number_of_bass_pixels_to_create = std::min(100,
+                                                   (int) (distribution(*gen) * .08 * _bassMagnitude * _gain.value() +
+                                                          .965));
+    int number_of_mid_pixels_to_create = std::min(100, (int) (distribution(*gen) * .25 * _midMagnitude * _gain.value() +
+                                                              .8));
+    int number_of_treble_pixels_to_create = std::min(100, (int) (distribution(*gen) * .08 * _trebleMagnitude *
+                                                                 _gain.value() + .97));
 
     const float min_position = -0.4f;
     const float max_position = 1.4f;
@@ -93,7 +97,9 @@ public:
     for (auto &p: _particles) {
       p.velocity *= velocity_decay;
       p.velocity += delta_a;
-      p.position += p.velocity * deltat * ((_bassMagnitude * 1.3) * (_bassMagnitude * 1.3) + .025 ); // TODO make specific to only some particles
+      p.position += p.velocity * deltat *
+                    ((_bassMagnitude * 1.3 * _gain.value()) * (_bassMagnitude * 1.3 * _gain.value()) +
+                     .025); // TODO make specific to only some particles
       p.age += deltat;
 
       if (p.valueDecayK > 0) {
@@ -102,7 +108,7 @@ public:
       }
     }
 
-    for (int i = 0; i <  number_of_bass_pixels_to_create  && _particles.size() < 300; i++) {
+    for (int i = 0; i < number_of_bass_pixels_to_create && _particles.size() < 300; i++) {
       std::uniform_real_distribution<float> spawn_distribution(min_position, max_position);
 
 //      float hue = calculateBassHue();
@@ -116,10 +122,10 @@ public:
               Particle{(ax > 0 ? 1.0f : 0.0f) + std::normal_distribution<float>(0.0f, 0.04f)(*gen),
                        std::normal_distribution<float>(1.2f, 0.04f)(*gen),
                        .95,
-                       1, brightness, 0, 1});
+                       1, brightness, 0, .8});
     }
 
-    for (int i = 0; i <  number_of_mid_pixels_to_create  && _particles.size() < 300; i++) {
+    for (int i = 0; i < number_of_mid_pixels_to_create && _particles.size() < 300; i++) {
       std::uniform_real_distribution<float> spawn_distribution(min_position, max_position);
 
 //      float hue = calculateBassHue();
@@ -133,9 +139,9 @@ public:
               Particle{(ax > 0 ? 1.0f : 0.0f) + std::normal_distribution<float>(0.0f, 0.04f)(*gen),
                        std::normal_distribution<float>(1.2f, 0.04f)(*gen),
                        .75,
-                       1, brightness, 0, 2});
+                       1, brightness, 0, 1.5});
     }
-    for (int i = 0; i <  number_of_treble_pixels_to_create  && _particles.size() < 300; i++) {
+    for (int i = 0; i < number_of_treble_pixels_to_create && _particles.size() < 300; i++) {
       std::uniform_real_distribution<float> spawn_distribution(min_position, max_position);
 
 //      float hue = calculateBassHue();
@@ -149,7 +155,7 @@ public:
               Particle{(ax > 0 ? 1.0f : 0.0f) + std::normal_distribution<float>(0.0f, 0.04f)(*gen),
                        std::normal_distribution<float>(1.2f, 0.04f)(*gen),
                        .6,
-                       1, brightness, 0, 3});
+                       1, brightness, 0, 2});
     }
 //    for (int i = 0; i < number_of_mid_pixels_to_create  && _particles.size() < 300; i++) {
 //      std::uniform_real_distribution<float> spawn_distribution(min_position, max_position);
@@ -193,7 +199,7 @@ public:
 
     _particles.erase(std::remove_if(_particles.begin(), _particles.end(),
                                     [&](Particle p) {
-                                      return p.position < min_position || p.position > max_position || p.value < .001f;
+                                      return p.position < min_position || p.position > max_position || p.value < .004f;
                                     }), _particles.end());
 
 
@@ -217,17 +223,16 @@ public:
     const float fadeInMultiple = 1.0f;
 
     //        float decay = 1.0;
-    //        for (int i = 0; i <= radius; i++) {
-    for (auto pixelIndex: {closestIndex, closestIndex + 1}) {
+    for (auto pixelIndex: {closestIndex - 1, closestIndex, closestIndex + 1, closestIndex + 2}) {
       if (pixelIndex < 0 || pixelIndex > stripLength()) {
         continue;
       }
 
       const float distance = fabsf(pixelIndex - pixelPos);
-      const float portion = 1.0f - distance;
+      const float portion = std::max<float>(0, std::min<float>(1.0f, (2.0f - distance) / 2));
       const float adjustedValue = value * portion;
 
-      const RGBLinear newColor = HSV{hue, saturation, adjustedValue * fadeInMultiple};
+      const RGBLinear newColor = HSV{hue, saturation, adjustedValue * fadeInMultiple * _brightness.value()};
 
       auto &pixel = _buffer1[pixelIndex];
 
@@ -236,7 +241,7 @@ public:
   }
 
   inline void paintParticles(float deltat) {
-    const int paintRadius = 3;
+    const int paintRadius = 4;
 
     for (auto const &p: _particles) {
       paintParticle(p.position, p.value, p.hue, p.saturation, paintRadius, p.age);
@@ -299,12 +304,16 @@ private:
   float _midMagnitude = 0;
   float _trebleMagnitude = 0;
 
+  SmoothLinearControl _brightness = SmoothLinearControl(0.0, 2.0, 1.0);
+  SmoothLinearControl _gain = SmoothLinearControl(0.0, 2.0, 1.0);
   IdentityValueControl _ax = IdentityValueControl(.5); // This should probably be an accumulator
   IdentityValueControl _hueSlicePhase = IdentityValueControl(.75);
   IdentityValueControl _hueSliceSizeControl = IdentityValueControl(.3);
   IdentityValueControl _generationAmount = IdentityValueControl(0.4);
 
   const std::vector<Control *> _controls = {
+          &_brightness,
+          &_gain,
           &_ax,
           &_hueSlicePhase,
           &_hueSliceSizeControl,

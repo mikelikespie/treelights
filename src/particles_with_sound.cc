@@ -44,8 +44,9 @@ extern "C" int _getpid(void) { return 1; }
 #include "SequenceBase.h"
 #include "Control.h"
 #include "ExampleSequence.h"
-#include "BurningFlambeosSequence.h"
+//#include "BurningFlambeosSequence.h"
 #include "SinWaveSequence.h"
+
 #include "ParticleEffectSequence.h"
 #include "SoundHistogramSequence.h"
 #include "SoundReactiveParticleEffectSequence.h"
@@ -58,7 +59,7 @@ teensydmx::Receiver dmxRx{Serial1};
 
 using namespace std;
 
-const int stripCount = 1;
+const int stripCount = 8  ;
 //const int stripCount = 1;
 const int realStripLength = 118;
 static const int totalLedCount = realStripLength * stripCount;
@@ -77,13 +78,13 @@ void writeBuffer();
 
 Context contexts[stripCount] = {
         Context(leds + realStripLength * 0, realStripLength, false),
-//        Context(leds + realStripLength * 1, realStripLength, false),
-//        Context(leds + realStripLength * 2, realStripLength, false),
-//        Context(leds + realStripLength * 3, realStripLength, false),
-//        Context(leds + realStripLength * 4, realStripLength, false),
-//        Context(leds + realStripLength * 5, realStripLength, false),
-//        Context(leds + realStripLength * 6, realStripLength, false),
-//        Context(leds + realStripLength * 7, realStripLength, false),
+        Context(leds + realStripLength * 1, realStripLength, false),
+        Context(leds + realStripLength * 2, realStripLength, false),
+        Context(leds + realStripLength * 3, realStripLength, false),
+        Context(leds + realStripLength * 4, realStripLength, false),
+        Context(leds + realStripLength * 5, realStripLength, false),
+        Context(leds + realStripLength * 6, realStripLength, false),
+        Context(leds + realStripLength * 7, realStripLength, false),
 
 };
 
@@ -97,7 +98,7 @@ typedef Sequence *(*SequenceFactory)();
 
 const SequenceFactory sequences[] = {
         []() -> Sequence * { return new ParticleEffectSequence(&gen, realStripLength, sharedClock); },
-        []() -> Sequence * { return new BurningFlambeosSequence(realStripLength, sharedClock); },
+//        []() -> Sequence * { return new BurningFlambeosSequence(realStripLength, sharedClock); },
         []() -> Sequence * { return new SinWaveSequence(realStripLength, sharedClock); },
         []() -> Sequence * {
           return new SoundHistogramSequence(realStripLength, sharedClock);
@@ -272,7 +273,7 @@ void loop() {
 }
 
 
-SPISettings APA102(2800000 * 4, MSBFIRST, SPI_MODE0);
+SPISettings APA102(2800000 , MSBFIRST, SPI_MODE0);
 
 void writeBuffer() {
   SPI.beginTransaction(APA102);

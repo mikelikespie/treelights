@@ -93,28 +93,29 @@ template<class WrappedControlType>
 class AccumulatorControl : public ValueControl<float> {
 public:
   template<typename ...WrappedControlTypeArgs>
-  AccumulatorControl(WrappedControlTypeArgs... wrappedControlArgs) : _wrappedControl(wrappedControlArgs...) {
+  explicit AccumulatorControl(WrappedControlTypeArgs... wrappedControlArgs) : _wrappedControl(wrappedControlArgs...),
+                                                                              _accumulatedValue(0) {
 
   }
 
-  virtual void tick(const Clock &clock, float inputValue) {
+  void tick(const Clock &clock, float inputValue) override {
     _wrappedControl.tick(clock, inputValue);
     _accumulatedValue += _wrappedControl.value() * clock.deltaf();
     ValueControl<float>::tick(clock, inputValue);
   }
 
-  virtual void tick(const Clock &clock) {
+  void tick(const Clock &clock) override {
     _wrappedControl.tick(clock);
     _accumulatedValue += _wrappedControl.value() * clock.deltaf();
     ValueControl<float>::tick(clock);
   }
 
-  virtual float computeNextValue(const Clock &clock, float dmxValue) {
+  float computeNextValue(const Clock &clock, float dmxValue) override {
     return _accumulatedValue;
   }
 
 
-  virtual float computeNextValue(const Clock &clock) {
+  float computeNextValue(const Clock &clock) override {
     return _accumulatedValue;
   }
 
@@ -194,8 +195,8 @@ class LinearlyInterpolatedValueControl<int>;
 template
 class LinearlyInterpolatedValueControl<float>;
 
-typedef LinearlyInterpolatedValueControl<float> SmoothLinearControl;
+//typedef LinearlyInterpolatedValueControl<float> SmoothLinearControl;
 typedef AccumulatorControl<LinearlyInterpolatedValueControl<float>> SmoothAccumulatorControl;
-//typedef BufferedControl<LinearlyInterpolatedValueControl<float>> SmoothLinearControl;
+typedef BufferedControl<LinearlyInterpolatedValueControl<float>> SmoothLinearControl;
 
 #endif //TREELIGHTS_CONTROL_H

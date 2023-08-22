@@ -133,7 +133,7 @@ public:
       const float portion = 1.0f - distance;
       const float adjustedValue = value * portion;
 
-      const RGBLinear newColor = HSV{hue, 1.0f, adjustedValue * fadeInMultiple};
+      const RGBLinear newColor = HSV{hue, 1.0f, adjustedValue * fadeInMultiple * _brightness.value()};
 
       auto &pixel = _buffer1[pixelIndex];
 
@@ -163,8 +163,8 @@ public:
     }
 
 //        float ax = -(_ax.value() - 0.5f) * deltat * 2;
-    float ax = -0.85f * deltat;
-    updateParticles(deltat, ax);
+//    float ax = -0.9f * deltat;
+    updateParticles(deltat, _ax.value() * deltat);
     paintParticles(deltat);
     decayPixels(deltat);
 
@@ -196,16 +196,18 @@ private:
   std::uniform_real_distribution<> distribution = std::uniform_real_distribution<>(0, 1);
   std::uniform_real_distribution<> lightnessDistribution = std::uniform_real_distribution<>(0.8, 1.2);
 
-  IdentityValueControl _ax = IdentityValueControl(.5); // This should probably be an accumulator
-  IdentityValueControl _hueSlicePhase = IdentityValueControl(.00);
-  IdentityValueControl _hueSliceSizeControl = IdentityValueControl(.11);
-  IdentityValueControl _generationAmount = IdentityValueControl(0.8);
+  SmoothLinearControl _brightness = SmoothLinearControl(0, 1, 2);
+  SmoothLinearControl _ax = SmoothLinearControl (0, -1, -.9); // This should probably be an accumulator
+  SmoothLinearControl _hueSlicePhase = SmoothLinearControl(0, 1, .0);
+  SmoothLinearControl _hueSliceSizeControl = SmoothLinearControl(0, 1, .1);
+  SmoothLinearControl _generationAmount = SmoothLinearControl(0, 1, 0.8);
 
   const std::vector<Control *> _controls = {
-          &_ax,
+          &_brightness,
+          &_generationAmount,
+//          &_ax,
           &_hueSlicePhase,
           &_hueSliceSizeControl,
-          &_generationAmount,
   };
 
   float _hueSliceMin{};
