@@ -94,12 +94,12 @@ TEST(ParticleEffectSequenceTest, PaintClipsAtStripEnd) {
   tickAllControls(&sequence, clock, 1.0f);
 
   // pixelPos 9.5: touches pixels 9 and 10; 10 must be clipped.
-  sequence.paintParticle(0.95f, 1.0f, 0.5f, 1.0f, 3, 1.0f);
+  sequence.paintParticle(0.95f, 1.0f, 0.5f, 1.0f, 1.0f);
   const RGBLinear &last = sequence._buffer1[9];
   EXPECT_GT(last.r + last.g + last.b, 0.0f);
 
   // Entirely past the end: no pixel is painted, and no out-of-bounds write.
-  sequence.paintParticle(1.05f, 1.0f, 0.5f, 1.0f, 3, 1.0f);
+  sequence.paintParticle(1.05f, 1.0f, 0.5f, 1.0f, 1.0f);
 }
 
 TEST(SoundReactiveParticleEffectSequenceTest, SpawnRespectsParticleCap) {
@@ -132,11 +132,11 @@ TEST(SoundReactiveParticleEffectSequenceTest, PaintClipsAtStripEnd) {
   tickAllControls(&sequence, clock, 1.0f);
 
   // pixelPos 9.5: closestIndex 9, paints up to index 11 unclipped.
-  sequence.paintParticle(0.95f, 1.0f, 0.5f, 1.0f, 4, 1.0f);
+  sequence.paintParticle(0.95f, 1.0f, 0.5f, 1.0f, 1.0f);
   const RGBLinear &last = sequence._buffer1[9];
   EXPECT_GT(last.r + last.g + last.b, 0.0f);
 
-  sequence.paintParticle(1.2f, 1.0f, 0.5f, 1.0f, 4, 1.0f);
+  sequence.paintParticle(1.2f, 1.0f, 0.5f, 1.0f, 1.0f);
 }
 
 }  // namespace

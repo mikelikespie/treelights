@@ -5,14 +5,12 @@
 #ifndef TREELIGHTS_PARTICLEEFFECTSEQUENCE_H
 #define TREELIGHTS_PARTICLEEFFECTSEQUENCE_H
 
+#include <math.h>
+#include <random>
 #include <vector>
 
 #include "Control.h"
-#include "SequenceBase.h"
-
-#include <math.h>
-#include <random>
-#include <ctime>
+#include "ParticleSequenceBase.h"
 
 
 static const int INITIAL_PARTICLE_BUFFER_SIZE = 200;
@@ -26,42 +24,12 @@ struct Particle {
   float age;
 };
 
-class ParticleEffectSequence : public SequenceBase<ParticleEffectSequence> {
+class ParticleEffectSequence : public ParticleSequenceBase<ParticleEffectSequence, Particle> {
 public:
   ParticleEffectSequence(std::mt19937 *gen, int stripLength, const Clock &clock)
-          : SequenceBase(stripLength, clock), gen(gen),
+          : ParticleSequenceBase(gen, stripLength, clock),
             _hueSliceMin(0), _hueSliceMax(0), _hueOffset(0) {
     _particles.reserve(INITIAL_PARTICLE_BUFFER_SIZE);
-    _buffer1.resize((size_t) (stripLength), RGBLinear{0, 0, 0});
-    _buffer2.resize((size_t) (stripLength), RGBLinear{0, 0, 0});
-  }
-
-  std::vector<RGBLinear> _buffer1;
-  std::vector<RGBLinear> _buffer2;
-  std::vector<Particle> _particles;
-
-  void decayPixels(float deltat) {
-    const float multiple = expf(-50.0f * deltat);
-    const float otherMultiple = 1.0f - multiple;
-//        float multiple = 0;
-
-    int size = (int) _buffer1.size();
-    for (int i = 0; i < size; i++) {
-      auto &dest = _buffer2[i];
-      const auto &src = _buffer1[i];
-//
-      dest.r = powf(sqrtf(dest.r) * multiple + sqrtf(src.r) * otherMultiple, 2.0f);
-      dest.g = powf(sqrtf(dest.g) * multiple + sqrtf(src.g) * otherMultiple, 2.0f);
-      dest.b = powf(sqrtf(dest.b) * multiple + sqrtf(src.b) * otherMultiple, 2.0f);
-
-      dest.r = std::max(std::min(dest.r, 1.0f), 0.0f);
-      dest.g = std::max(std::min(dest.g, 1.0f), 0.0f);
-      dest.b = std::max(std::min(dest.b, 1.0f), 0.0f);
-
-      if (i == 0) {
-        dest = src;
-      }
-    }
   }
 
   void updateParticles(float deltat, float ax) {
@@ -73,8 +41,6 @@ public:
 
 
     if (create_pixel && _particles.size() < 100) {
-      std::uniform_real_distribution<float> spawn_distribution(min_position, max_position);
-
       float hue = calculateHue();
       float brightness = lightnessDistribution(*gen);
       float saturation = distribution(*gen);
@@ -91,12 +57,10 @@ public:
 
     // update velocity
 
-    float delta_a = ax;
-
     float velocity_decay = expf(0.01f * -deltat);
     for (auto &p: _particles) {
       p.velocity *= velocity_decay;
-      p.velocity += delta_a;
+      p.velocity += ax;
       p.position += p.velocity * deltat;
       p.age += deltat;
     }
@@ -105,26 +69,14 @@ public:
                                     [&](Particle p) {
                                       return p.position < min_position || p.position > max_position;
                                     }), _particles.end());
-
-
   }
 
-  inline void combineColor(RGBLinear *destination, const RGBLinear additionalColor) {
-    destination->r = std::min(1.0f, destination->r + additionalColor.r);
-    destination->g = std::min(1.0f, destination->g + additionalColor.g);
-    destination->b = std::min(1.0f, destination->b + additionalColor.b);
-  }
-
-  inline void paintParticle(float position, float value, float hue, float saturation, const int radius, float age) {
+  inline void paintParticle(float position, float value, float hue, float saturation, float age) {
     const float pixelPos = position * stripLength();
     const int closestIndex = (int) (pixelPos);
 
-
     const float fadeInMultiple = 1.0f - expf(-age * 30);
 
-
-//        float decay = 1.0;
-//        for (int i = 0; i <= radius; i++) {
     for (auto pixelIndex: {closestIndex, closestIndex + 1}) {
       if (pixelIndex < 0 || pixelIndex >= stripLength()) {
         continue;
@@ -140,16 +92,10 @@ public:
 
       combineColor(&pixel, newColor);
     }
-////            decay *= 0.1;
-//        }
   }
 
-  inline void paintParticles(float deltat) {
-    const int paintRadius = 3;
-
-    for (auto const &p: _particles) {
-      paintParticle(p.position, p.value, p.hue, p.saturation, paintRadius, p.age);
-    }
+  void decayPixels(float deltat) {
+    decayPixelsSmoothed(deltat);
   }
 
   void loop(Context *context) override {
@@ -158,33 +104,13 @@ public:
     _hueSliceMin = hueSlicePhase - _hueSliceSizeControl.value() * .5f;
     _hueSliceMax = hueSlicePhase + _hueSliceSizeControl.value() * .5f;
 
-
-    for (auto &p: _buffer1) {
-      p = RGBLinear{0, 0, 0};
-    }
-
 //        float ax = -(_ax.value() - 0.5f) * deltat * 2;
 //    float ax = -0.9f * deltat;
-    updateParticles(deltat, _ax.value() * deltat);
-    paintParticles(deltat);
-    decayPixels(deltat);
-
-    SequenceBase::loop(context);
-
-//        _hueSlicePhase.truncate(1.0f);
-
-  }
-
-  inline ARGB colorForPixel(int pixel, const Context &context) {
-    return _buffer2[pixel].convertWithJitter(*gen);
+    runParticleFrame(context, deltat, _ax.value() * deltat);
   }
 
   const std::vector<Control *> &controls() override {
     return _controls;
-  }
-
-  const float inline k() const {
-    return 0.1;
   }
 
   const float inline generation_k() const {
@@ -193,10 +119,6 @@ public:
 
 
 private:
-  std::mt19937 *gen;
-  std::uniform_real_distribution<> distribution = std::uniform_real_distribution<>(0, 1);
-  std::uniform_real_distribution<> lightnessDistribution = std::uniform_real_distribution<>(0.8, 1.2);
-
   SmoothLinearControl _brightness = SmoothLinearControl(0, 1, 2);
   SmoothLinearControl _ax = SmoothLinearControl (0, -1, -.9); // This should probably be an accumulator
   SmoothLinearControl _hueSlicePhase = SmoothLinearControl(0, 1, .0);
@@ -215,20 +137,8 @@ private:
   float _hueSliceMax{};
   const float _hueOffset;
 
-private:
   inline float calculateHue() {
-    const float minhue = _hueSliceMin;
-    const float maxhue = _hueSliceMax;
-    std::uniform_real_distribution<float> dist(minhue, maxhue);
-    float hue = dist(*gen) + _hueOffset;
-
-    if (hue < 0) {
-      hue -= floorf(hue);
-    } else {
-      hue = fmodf(hue, 1.0);
-    }
-
-    return hue;
+    return randomHueInSlice(_hueSliceMin, _hueSliceMax, _hueOffset);
   }
 };
 
