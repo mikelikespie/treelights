@@ -32,6 +32,10 @@ python.toolchain(python_version = "3.12")
 
 bazel_dep(name = "googletest", version = "1.17.0.bcr.2", dev_dependency = True)
 
+# Native macOS simulator app (//sim).
+bazel_dep(name = "rules_apple", version = "4.5.3")
+bazel_dep(name = "rules_swift", version = "3.6.1")
+
 # Arduino libraries, formerly git submodules under deps/. Pinned to the same
 # commits the submodules pointed at; BUILD files live in //third_party so they
 # can't get lost with the checkout again.

@@ -15,6 +15,11 @@
 
 #include <cmath>
 
+// Teensy's math headers define M_TWOPI; host libm does not.
+#ifndef M_TWOPI
+#define M_TWOPI (2.0 * M_PI)
+#endif
+
 
 class SinWaveSequence : public SequenceBase<SinWaveSequence> {
 

@@ -1,0 +1,52 @@
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
+load("@rules_cc//cc:objc_library.bzl", "objc_library")
+load("@rules_apple//apple:macos.bzl", "macos_application")
+load("@rules_swift//swift:swift_library.bzl", "swift_library")
+
+# Headless firmware-faithful engine; keep optimized — the app composites
+# ~1M pixel ops per frame even in fastbuild.
+cc_library(
+    name = "engine",
+    srcs = ["SimEngine.cc"],
+    hdrs = ["SimEngine.h"],
+    copts = ["-O2"],
+    deps = ["//src:core"],
+)
+
+cc_test(
+    name = "engine_test",
+    size = "small",
+    srcs = ["engine_test.cc"],
+    deps = [
+        ":engine",
+        "@googletest//:gtest_main",
+    ],
+)
+
+objc_library(
+    name = "bridge",
+    srcs = ["TLEngineBridge.mm"],
+    hdrs = ["TLEngineBridge.h"],
+    copts = [
+        "-fobjc-arc",
+        "-O2",
+    ],
+    deps = [":engine"],
+)
+
+swift_library(
+    name = "app",
+    srcs = glob(["Sources/*.swift"]),
+    module_name = "TreelightsSimulator",
+    deps = [":bridge"],
+)
+
+macos_application(
+    name = "Simulator",
+    bundle_id = "com.mikelikespie.treelights.simulator",
+    infoplists = ["Info.plist"],
+    minimum_os_version = "14.0",
+    visibility = ["//visibility:public"],
+    deps = [":app"],
+)

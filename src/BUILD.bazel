@@ -22,6 +22,7 @@ cc_library(
         "ParticleEffectSequence.h",
         "ParticleSequenceBase.h",
         "SequenceBase.h",
+        "SinWaveSequence.h",
         "SoundData.h",
         "SoundHistogramSequence.h",
         "SoundReactiveParticleEffectSequence.h",
