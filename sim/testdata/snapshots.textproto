@@ -1,0 +1,39 @@
+# proto-file: sim/render_config.proto
+# proto-message: treelights.sim.SnapshotSuite
+#
+# Regenerate goldens after intended visual changes:
+#   bazel run //sim:simrender -- --update_snapshots
+
+cases {
+  name: "bars_particles"
+  config { fixture: BARS sequence: 0 synthetic_beat: true at_seconds: 4 }
+}
+cases {
+  name: "bars_sinwave"
+  config { fixture: BARS sequence: 1 at_seconds: 4 }
+}
+cases {
+  name: "bars_histogram"
+  config { fixture: BARS sequence: 2 synthetic_beat: true at_seconds: 4 }
+}
+cases {
+  name: "bars_soundparticles"
+  config { fixture: BARS sequence: 3 synthetic_beat: true at_seconds: 4 }
+}
+cases {
+  name: "ball_particles"
+  config { fixture: BALL sequence: 0 synthetic_beat: true at_seconds: 4 yaw: 0.6 pitch: 0.35 }
+}
+cases {
+  name: "ball_sinwave"
+  config { fixture: BALL sequence: 1 at_seconds: 4 yaw: 0.6 pitch: 0.35 }
+}
+cases {
+  name: "bars_wav"
+  config {
+    fixture: BARS
+    sequence: 3
+    wav_path: "sim/testdata/test_tone.wav"
+    at_seconds: 2.5
+  }
+}

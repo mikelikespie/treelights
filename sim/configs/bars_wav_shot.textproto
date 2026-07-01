@@ -1,0 +1,10 @@
+# proto-file: sim/render_config.proto
+# proto-message: treelights.sim.RenderConfig
+#
+# Sound Particles reacting to the generated test tone at t=2.5s:
+#   bazel build //sim:demo_bars_wav
+
+fixture: BARS
+sequence: 3
+wav_path: "sim/testdata/test_tone.wav"
+at_seconds: 2.5

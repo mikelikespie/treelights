@@ -56,6 +56,11 @@ typedef NS_ENUM(NSInteger, TLFixture) {
                      pitch:(float)pitch
                       into:(void *)rgba16f;
 
+/// Fills 512 bins with the shared deterministic synthetic beat (single
+/// source of truth in C++, also used by the render CLI and snapshot tests).
++ (void)syntheticBins:(double)tSeconds
+                 into:(float *)bins512 NS_SWIFT_NAME(syntheticBins(at:into:));
+
 @end
 
 NS_ASSUME_NONNULL_END

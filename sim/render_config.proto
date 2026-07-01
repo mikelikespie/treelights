@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package treelights.sim;
+
+// Everything needed to deterministically reproduce a rendered frame (or
+// clip): same config in => same pixels out. Written as .textproto files and
+// consumed by //sim:simrender and //sim:snapshot_test.
+message RenderConfig {
+  enum Fixture {
+    FIXTURE_UNSPECIFIED = 0;  // treated as BARS
+    BARS = 1;
+    BALL = 2;
+  }
+
+  Fixture fixture = 1;
+
+  // Index into the firmware sequence table (0 = Particles, 1 = Sin Wave,
+  // 2 = Sound Histogram, 3 = Sound Particles).
+  int32 sequence = 2;
+
+  // DMX channel inputs in 0..1, applied before the first frame. Leave empty
+  // to run on firmware defaults (pre-DMX behavior).
+  repeated float controls = 3;
+
+  // Audio driving the sound-reactive sequences. Default: silence.
+  oneof audio {
+    // Path to a PCM WAV file (16/24-bit int or 32-bit float), resolved
+    // against the working directory, the config file's directory, and
+    // --wav_root. FFT'd with the same 1024-point Hann window the Teensy uses.
+    string wav_path = 4;
+    // The deterministic four-on-the-floor groove from the app.
+    bool synthetic_beat = 5;
+  }
+
+  // Extra gain applied to WAV-derived FFT bins. 0 = default (4.0).
+  float wav_gain = 6;
+
+  // Timestamp to render, in seconds from simulation start.
+  double at_seconds = 7;
+
+  // Simulation frame step. 0 = default (16 ms, ~62.5 fps like the device).
+  int32 step_millis = 8;
+
+  // Tone mapping. 0 = defaults (exposure 2.2, headroom 1.0 = SDR).
+  float exposure = 9;
+  float headroom = 10;
+
+  // Ball fixture camera orbit (radians).
+  float yaw = 11;
+  float pitch = 12;
+  // Ball auto-spin rate applied over simulated time (radians/sec).
+  float yaw_rate = 13;
+
+  // If > 0, emit an animated PNG covering [at_seconds, at_seconds + this]
+  // instead of a single frame.
+  double video_duration_seconds = 14;
+}
+
+message SnapshotCase {
+  // Golden image name; compared against testdata/golden/<name>.png.
+  string name = 1;
+  RenderConfig config = 2;
+}
+
+message SnapshotSuite {
+  repeated SnapshotCase cases = 1;
+}

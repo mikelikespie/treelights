@@ -1,5 +1,6 @@
 import AVFoundation
 import Accelerate
+import sim_bridge
 
 enum AudioMode: String, CaseIterable, Identifiable {
   case synthetic = "Synth beat"
@@ -98,29 +99,10 @@ final class AudioSource: @unchecked Sendable {
   }
 
   /// Deterministic four-on-the-floor groove for hardware-free demos.
+  /// Implemented once in C++ (shared with the render CLI and snapshot tests).
   func syntheticBins(at t: Double) -> [Float] {
     var bins = [Float](repeating: 0, count: 512)
-
-    let kick = Float(exp(-t.truncatingRemainder(dividingBy: 0.5) * 14))
-    for (bin, weight) in [(1, 0.9), (2, 1.0), (3, 0.8), (4, 0.5), (5, 0.3), (6, 0.18)] {
-      bins[bin] += kick * Float(weight)
-    }
-
-    let snare = Float(exp(-(t + 0.5).truncatingRemainder(dividingBy: 1.0) * 10)) * 0.4
-    for bin in 30..<90 {
-      bins[bin] += snare * Float(exp(-Double(bin - 30) / 25))
-    }
-
-    let hat = Float(exp(-(t + 0.25).truncatingRemainder(dividingBy: 0.5) * 24)) * 0.22
-    for bin in 150..<380 {
-      bins[bin] += hat
-    }
-
-    let swell = Float(0.5 + 0.5 * sin(t * 0.7)) * 0.12
-    for bin in 10..<26 {
-      bins[bin] += swell
-    }
-
+    TLEngine.syntheticBins(at: t, into: &bins)
     return bins
   }
 }

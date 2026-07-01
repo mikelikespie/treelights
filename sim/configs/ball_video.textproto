@@ -1,0 +1,13 @@
+# proto-file: sim/render_config.proto
+# proto-message: treelights.sim.RenderConfig
+#
+# 4-second orbiting icosahedron clip: bazel build //sim:demo_ball_video
+
+fixture: BALL
+sequence: 0
+synthetic_beat: true
+at_seconds: 2
+video_duration_seconds: 4
+yaw: 0.6
+pitch: 0.35
+yaw_rate: 0.4

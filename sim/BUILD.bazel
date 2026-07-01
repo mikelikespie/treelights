@@ -1,10 +1,21 @@
+load("@protobuf//bazel:cc_proto_library.bzl", "cc_proto_library")
+load("@protobuf//bazel:proto_library.bzl", "proto_library")
+load("@rules_apple//apple:macos.bzl", "macos_application")
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("@rules_cc//cc:cc_test.bzl", "cc_test")
 load("@rules_cc//cc:objc_library.bzl", "objc_library")
-load("@rules_apple//apple:macos.bzl", "macos_application")
 load("@rules_swift//swift:swift_library.bzl", "swift_library")
+load(":render.bzl", "sim_render")
 
-# Headless firmware-faithful engine; keep optimized — the app composites
+MACOS_ONLY = ["@platforms//os:macos"]
+
+# ---------------------------------------------------------------------------
+# Cross-platform core: engine, renderer, audio, image output. Everything here
+# builds and tests on Linux (clang + libc++, see .bazelrc) as well as macOS.
+# ---------------------------------------------------------------------------
+
+# Headless firmware-faithful engine; keep optimized — consumers composite
 # ~1M pixel ops per frame even in fastbuild.
 cc_library(
     name = "engine",
@@ -24,6 +35,125 @@ cc_test(
     ],
 )
 
+# CPU glow compositor + HDR/sRGB tone mapping, shared by the mac app (via
+# :bridge) and the offline render pipeline.
+cc_library(
+    name = "renderer",
+    srcs = ["SimRenderer.cc"],
+    hdrs = ["SimRenderer.h"],
+    copts = ["-O2"],
+    deps = [":engine"],
+)
+
+cc_library(
+    name = "synth_beat",
+    srcs = ["SyntheticBeat.cc"],
+    hdrs = ["SyntheticBeat.h"],
+    deps = ["//src:core"],
+)
+
+cc_library(
+    name = "audio_file",
+    srcs = ["AudioFile.cc"],
+    hdrs = ["AudioFile.h"],
+    copts = ["-O2"],
+    deps = ["//src:core"],
+)
+
+cc_library(
+    name = "png_writer",
+    srcs = ["PngWriter.cc"],
+    hdrs = ["PngWriter.h"],
+    deps = ["@zlib"],
+)
+
+proto_library(
+    name = "render_config_proto",
+    srcs = ["render_config.proto"],
+)
+
+cc_proto_library(
+    name = "render_config_cc_proto",
+    deps = [":render_config_proto"],
+)
+
+cc_library(
+    name = "render_runner",
+    srcs = ["RenderRunner.cc"],
+    hdrs = ["RenderRunner.h"],
+    deps = [
+        ":audio_file",
+        ":engine",
+        ":render_config_cc_proto",
+        ":renderer",
+        ":synth_beat",
+    ],
+)
+
+# Offline renderer: RenderConfig textproto -> PNG still or APNG clip.
+#   bazel run //sim:simrender -- --config=cfg.textproto --out=shot.png
+#   bazel run //sim:simrender -- --update_snapshots
+cc_binary(
+    name = "simrender",
+    srcs = ["simrender_main.cc"],
+    data = [":test_wav"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":png_writer",
+        ":render_runner",
+    ],
+)
+
+cc_binary(
+    name = "gen_test_wav",
+    srcs = ["gen_test_wav.cc"],
+    deps = [":audio_file"],
+)
+
+# Deterministic audio fixture, generated at build time (never committed).
+genrule(
+    name = "test_wav",
+    outs = ["testdata/test_tone.wav"],
+    cmd = "$(location :gen_test_wav) $@",
+    tools = [":gen_test_wav"],
+)
+
+cc_test(
+    name = "snapshot_test",
+    size = "medium",
+    srcs = ["snapshot_test.cc"],
+    data = [
+        "testdata/snapshots.textproto",
+        ":test_wav",
+    ] + glob(
+        ["testdata/golden/*.png"],
+        allow_empty = True,
+    ),
+    deps = [
+        ":png_writer",
+        ":render_runner",
+        "@googletest//:gtest_main",
+    ],
+)
+
+# Rendered artifacts as ordinary build outputs.
+sim_render(
+    name = "demo_ball_video",
+    config = "configs/ball_video.textproto",
+    out = "demo_ball.apng",
+)
+
+sim_render(
+    name = "demo_bars_wav",
+    config = "configs/bars_wav_shot.textproto",
+    data = [":test_wav"],
+    out = "bars_wav_shot.png",
+)
+
+# ---------------------------------------------------------------------------
+# macOS app
+# ---------------------------------------------------------------------------
+
 objc_library(
     name = "bridge",
     srcs = ["TLEngineBridge.mm"],
@@ -32,13 +162,19 @@ objc_library(
         "-fobjc-arc",
         "-O2",
     ],
-    deps = [":engine"],
+    target_compatible_with = MACOS_ONLY,
+    deps = [
+        ":engine",
+        ":renderer",
+        ":synth_beat",
+    ],
 )
 
 swift_library(
     name = "app",
     srcs = glob(["Sources/*.swift"]),
     module_name = "TreelightsSimulator",
+    target_compatible_with = MACOS_ONLY,
     deps = [":bridge"],
 )
 
@@ -47,6 +183,7 @@ macos_application(
     bundle_id = "com.mikelikespie.treelights.simulator",
     infoplists = ["Info.plist"],
     minimum_os_version = "14.0",
+    target_compatible_with = MACOS_ONLY,
     visibility = ["//visibility:public"],
     deps = [":app"],
 )

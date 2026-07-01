@@ -36,6 +36,11 @@ bazel_dep(name = "googletest", version = "1.17.0.bcr.2", dev_dependency = True)
 bazel_dep(name = "rules_apple", version = "4.5.3")
 bazel_dep(name = "rules_swift", version = "3.6.1")
 
+# Cross-platform offline rendering (//sim: PNG/APNG output, snapshot tests).
+bazel_dep(name = "platforms", version = "1.0.0")
+bazel_dep(name = "protobuf", version = "35.1")
+bazel_dep(name = "zlib", version = "1.3.2")
+
 # Arduino libraries, formerly git submodules under deps/. Pinned to the same
 # commits the submodules pointed at; BUILD files live in //third_party so they
 # can't get lost with the checkout again.
