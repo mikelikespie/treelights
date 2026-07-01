@@ -12,22 +12,36 @@
 #include "SoundData.h"
 #include "clock.h"
 
-/// Headless re-creation of the firmware main loop (particles_with_sound.cc):
-/// same strip geometry, sequence set, control ticking, and sound plumbing,
-/// with wall time, sound bins, and DMX values injected instead of read from
-/// hardware.
+/// Which physical build the engine emulates.
+enum class SimFixture {
+  /// particles_with_sound.cc: 8 strips x 118 LEDs.
+  kBars,
+  /// ball_loop_2.cc: one 540-LED strip along the 30 edges (18 LEDs each) of
+  /// an icosahedron.
+  kBall,
+};
+
+/// Headless re-creation of the firmware main loop (particles_with_sound.cc /
+/// ball_loop_2.cc): same strip geometry, sequence set, control ticking, and
+/// sound plumbing, with wall time, sound bins, and DMX values injected
+/// instead of read from hardware.
 class SimEngine {
 public:
-  static constexpr int kStripCount = 8;
-  static constexpr int kStripLength = 118;
-  static constexpr int kTotalLedCount = kStripCount * kStripLength;
   static constexpr int kMaxControls = 16;  // DMX_CHANNEL_COUNT on the device
 
-  SimEngine();
+  static constexpr int kBallSegmentLength = 18;
+  static constexpr int kBallSegmentCount = 30;  // icosahedron edges
+
+  explicit SimEngine(SimFixture fixture = SimFixture::kBars);
   ~SimEngine();
 
   SimEngine(const SimEngine &) = delete;
   SimEngine &operator=(const SimEngine &) = delete;
+
+  SimFixture fixture() const { return _fixture; }
+  int stripCount() const { return _stripCount; }
+  int stripLength() const { return _stripLength; }
+  int totalLedCount() const { return _stripCount * _stripLength; }
 
   /// Advances one frame. fft512 may be null (no fresh audio this frame);
   /// otherwise it must point at SOUND_BUFFER_BIN_COUNT floats.
@@ -46,14 +60,18 @@ public:
   /// without input and hold their defaults.
   void setControlValue(int channel, float value);
 
-  const ARGB *leds() const { return _leds; }
+  const ARGB *leds() const { return _leds.data(); }
 
 private:
   Sequence *instanceFor(int sequenceIndex, int strip);
 
+  const SimFixture _fixture;
+  const int _stripCount;
+  const int _stripLength;
+
   Clock _clock;
   std::mt19937 _gen{0};
-  ARGB _leds[kTotalLedCount] = {};
+  std::vector<ARGB> _leds;
   std::vector<Context> _contexts;
   std::vector<Sequence *> _instances;  // sequenceCount x stripCount, lazy
   SoundDataBuffer _soundBuffer = {0};

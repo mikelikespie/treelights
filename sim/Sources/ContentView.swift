@@ -6,13 +6,15 @@ struct ContentView: View {
   var body: some View {
     @Bindable var model = model
 
+    let canvasPoints = canvasPointSize
+
     HStack(spacing: 0) {
       VStack(spacing: 12) {
         LEDCanvas(model: model)
-          .frame(width: 927, height: 312)
+          .frame(width: canvasPoints.width, height: canvasPoints.height)
           .clipShape(RoundedRectangle(cornerRadius: 8))
         SpectrumView(model: model)
-          .frame(width: 927, height: 70)
+          .frame(width: canvasPoints.width, height: 70)
       }
       .padding(16)
       .background(.black)
@@ -21,6 +23,19 @@ struct ContentView: View {
 
       Form {
         Section {
+          Picker("Fixture", selection: fixtureBinding) {
+            ForEach(Fixture.allCases) { fixture in
+              Text(fixture.rawValue).tag(fixture)
+            }
+          }
+          .pickerStyle(.segmented)
+
+          if model.fixture == .ball {
+            Text("Drag the ball to orbit; it spins on its own after 2s.")
+              .font(.caption)
+              .foregroundStyle(.secondary)
+          }
+
           Picker("Sequence", selection: sequenceBinding) {
             ForEach(Array(model.sequenceNames.enumerated()), id: \.offset) { index, name in
               Text(name).tag(index)
@@ -77,6 +92,20 @@ struct ContentView: View {
       .formStyle(.grouped)
       .frame(width: 320)
     }
+  }
+
+  /// Canvas in points: bars at 0.75x pixels, ball square fit to same height budget.
+  private var canvasPointSize: CGSize {
+    switch model.fixture {
+    case .bars: CGSize(width: 927, height: 312)
+    case .ball: CGSize(width: 560, height: 560)
+    }
+  }
+
+  private var fixtureBinding: Binding<Fixture> {
+    Binding(
+      get: { model.fixture },
+      set: { model.selectFixture($0) })
   }
 
   private var sequenceBinding: Binding<Int> {

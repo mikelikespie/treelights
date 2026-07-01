@@ -41,10 +41,12 @@ final class MetalLEDView: NSView {
     metalLayer.framebufferOnly = false
     metalLayer.wantsExtendedDynamicRangeContent = true
     metalLayer.colorspace = CGColorSpace(name: CGColorSpace.extendedLinearSRGB)
-    metalLayer.drawableSize = CGSize(
-      width: TLEngine.canvasWidth, height: TLEngine.canvasHeight)
     metalLayer.backgroundColor = .black
     return metalLayer
+  }
+
+  override func mouseDragged(with event: NSEvent) {
+    model?.orbit(dx: event.deltaX, dy: event.deltaY)
   }
 
   override func viewDidMoveToWindow() {

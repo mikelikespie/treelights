@@ -13,14 +13,14 @@ float emitted(const ARGB &led) {
 
 float totalLight(const SimEngine &engine) {
   float sum = 0;
-  for (int i = 0; i < SimEngine::kTotalLedCount; i++) {
+  for (int i = 0; i < engine.totalLedCount(); i++) {
     sum += emitted(engine.leds()[i]);
   }
   return sum;
 }
 
 TEST(SimEngineTest, EverySequenceRendersLight) {
-  SimEngine engine;
+  SimEngine engine(SimFixture::kBars);
 
   float bins[SOUND_BUFFER_BIN_COUNT] = {0};
   bins[2] = 0.6f;    // bass
@@ -37,8 +37,25 @@ TEST(SimEngineTest, EverySequenceRendersLight) {
   }
 }
 
+TEST(SimEngineTest, BallFixtureRendersLight) {
+  SimEngine engine(SimFixture::kBall);
+  EXPECT_EQ(engine.stripCount(), 1);
+  EXPECT_EQ(engine.totalLedCount(),
+            SimEngine::kBallSegmentCount * SimEngine::kBallSegmentLength);
+
+  // The ball firmware's sequences were SinWave and Particles.
+  for (int seq = 0; seq < 2; seq++) {
+    engine.setSequenceIndex(seq);
+    uint32_t base = 1000 + seq * 100000;
+    for (int frame = 0; frame < 240; frame++) {
+      engine.tick(base + frame * 16, nullptr);
+    }
+    EXPECT_GT(totalLight(engine), 0.0f) << engine.sequenceName(seq);
+  }
+}
+
 TEST(SimEngineTest, ControlsAffectOutput) {
-  SimEngine engine;  // sequence 0: Particles; control 0 is brightness
+  SimEngine engine(SimFixture::kBars);  // sequence 0: Particles
 
   for (int frame = 0; frame < 120; frame++) {
     engine.tick(1000 + frame * 16, nullptr);
@@ -57,7 +74,7 @@ TEST(SimEngineTest, ControlsAffectOutput) {
 }
 
 TEST(SimEngineTest, SwitchingSequencesIsStable) {
-  SimEngine engine;
+  SimEngine engine(SimFixture::kBars);
   float bins[SOUND_BUFFER_BIN_COUNT] = {0};
   bins[3] = 0.5f;
 

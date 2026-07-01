@@ -33,12 +33,18 @@ const int kSequenceCount = sizeof(kSequences) / sizeof(kSequences[0]);
 
 }  // namespace
 
-SimEngine::SimEngine() {
-  _contexts.reserve(kStripCount);
-  for (int s = 0; s < kStripCount; s++) {
-    _contexts.emplace_back(_leds + s * kStripLength, kStripLength, false);
+SimEngine::SimEngine(SimFixture fixture)
+    : _fixture(fixture),
+      _stripCount(fixture == SimFixture::kBall ? 1 : 8),
+      _stripLength(fixture == SimFixture::kBall
+                       ? kBallSegmentLength * kBallSegmentCount
+                       : 118) {
+  _leds.assign((size_t) totalLedCount(), ARGB{});
+  _contexts.reserve(_stripCount);
+  for (int s = 0; s < _stripCount; s++) {
+    _contexts.emplace_back(_leds.data() + s * _stripLength, _stripLength, false);
   }
-  _instances.assign(kSequenceCount * kStripCount, nullptr);
+  _instances.assign(kSequenceCount * _stripCount, nullptr);
 }
 
 SimEngine::~SimEngine() {
@@ -48,9 +54,9 @@ SimEngine::~SimEngine() {
 }
 
 Sequence *SimEngine::instanceFor(int sequenceIndex, int strip) {
-  Sequence *&slot = _instances[sequenceIndex * kStripCount + strip];
+  Sequence *&slot = _instances[sequenceIndex * _stripCount + strip];
   if (slot == nullptr) {
-    slot = kSequences[sequenceIndex].make(&_gen, kStripLength, _clock);
+    slot = kSequences[sequenceIndex].make(&_gen, _stripLength, _clock);
     slot->initialize();
   }
   return slot;
@@ -61,12 +67,12 @@ void SimEngine::tick(uint32_t nowMillis, const float *fft512) {
 
   if (fft512 != nullptr) {
     memcpy(_soundBuffer, fft512, sizeof(_soundBuffer));
-    for (int strip = 0; strip < kStripCount; strip++) {
+    for (int strip = 0; strip < _stripCount; strip++) {
       instanceFor(_sequenceIndex, strip)->updateSoundData(_soundBuffer);
     }
   }
 
-  for (int strip = 0; strip < kStripCount; strip++) {
+  for (int strip = 0; strip < _stripCount; strip++) {
     Sequence *sequence = instanceFor(_sequenceIndex, strip);
 
     const std::vector<Control *> &controls = sequence->controls();
@@ -97,8 +103,8 @@ void SimEngine::setSequenceIndex(int index) {
   }
   _sequenceIndex = index;
   // Like the firmware: refresh sound data on instances we're switching back to.
-  for (int strip = 0; strip < kStripCount; strip++) {
-    Sequence *existing = _instances[index * kStripCount + strip];
+  for (int strip = 0; strip < _stripCount; strip++) {
+    Sequence *existing = _instances[index * _stripCount + strip];
     if (existing != nullptr) {
       existing->updateSoundData(_soundBuffer);
     }
