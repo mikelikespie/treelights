@@ -1,0 +1,56 @@
+module(name = "treelights")
+
+# Must stay above any other dep that registers C++ toolchains so the
+# Xcode-aware Apple toolchain wins on macOS (the plain rules_cc one chokes on
+# SDKSettings.json dependencies emitted by newer clang).
+bazel_dep(name = "apple_support", version = "2.6.1")
+
+# platformio_rules is not in the Bazel Central Registry; pin master via
+# archive_override (per its README). Bump the commit + sha256 to upgrade.
+bazel_dep(name = "platformio_rules")
+archive_override(
+    module_name = "platformio_rules",
+    # Fixes for upstream @ 3cd18c7: adds /opt/homebrew/bin to the build-action
+    # PATH (Apple Silicon Homebrew), loads py_binary explicitly (Bazel 9), and
+    # repairs the environment_kwargs loop in the platformio.ini template.
+    patch_strip = 1,
+    patches = ["//third_party:platformio_rules_fixes.patch"],
+    sha256 = "a80357230e27b8b57b8deffaa82684d3ee88b2284e4a767a9d8a692e9034e125",
+    strip_prefix = "platformio_rules-3cd18c7c7bb2482fe3cbb58898245dd675421234",
+    urls = ["https://github.com/mum4k/platformio_rules/archive/3cd18c7c7bb2482fe3cbb58898245dd675421234.tar.gz"],
+)
+
+bazel_dep(name = "rules_cc", version = "0.2.17")
+
+# platformio_rules' pip lockfile is built for Python 3.12; make the root
+# module agree so the wheel select() resolves.
+bazel_dep(name = "rules_python", version = "2.1.0")
+
+python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+python.defaults(python_version = "3.12")
+python.toolchain(python_version = "3.12")
+
+bazel_dep(name = "googletest", version = "1.17.0.bcr.2", dev_dependency = True)
+
+# Arduino libraries, formerly git submodules under deps/. Pinned to the same
+# commits the submodules pointed at; BUILD files live in //third_party so they
+# can't get lost with the checkout again.
+http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "SPI",
+    build_file = "//third_party:SPI.BUILD.bazel",
+    sha256 = "4752772bb038bc80edc9e60f0dddee82a8fd0fc01f5f5bfa66edb733e2b11387",
+    strip_prefix = "SPI-574ab8c7a8a45ea21cc56dcc6b7361da90868e86",
+    urls = ["https://github.com/PaulStoffregen/SPI/archive/574ab8c7a8a45ea21cc56dcc6b7361da90868e86.tar.gz"],
+)
+
+http_archive(
+    name = "TeensyDMX",
+    build_file = "//third_party:TeensyDMX.BUILD.bazel",
+    # strip down to src/ so library files sit at the repo root, matching the
+    # layout platformio_library expects.
+    sha256 = "c3e624a504a9cad35fc6e93eee2c898c59294c6bfd95f1065f301c88933458a2",
+    strip_prefix = "TeensyDMX-b9008368a12b3b5692665c0a06b97a27aeca7eef/src",
+    urls = ["https://github.com/ssilverman/TeensyDMX/archive/b9008368a12b3b5692665c0a06b97a27aeca7eef.tar.gz"],
+)

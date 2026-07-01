@@ -40,7 +40,7 @@ public:
                     std::max(0.0f, std::min(1.0f, _vControl.value()))};
     }
 
-    virtual const std::vector<Control *> &controls() {
+    const std::vector<Control *> &controls() override {
         return _controls;
     }
 
@@ -64,7 +64,7 @@ public:
                      (uint8_t) (_bControl.value() * 255)};
     }
 
-    virtual const std::vector<Control *> &controls() {
+    const std::vector<Control *> &controls() override {
         return _controls;
     }
 

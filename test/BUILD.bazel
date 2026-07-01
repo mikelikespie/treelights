@@ -1,0 +1,16 @@
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
+
+cc_test(
+    name = "core_test",
+    size = "small",
+    srcs = [
+        "color_test.cc",
+        "control_test.cc",
+        "sequence_test.cc",
+        "sounddata_test.cc",
+    ],
+    deps = [
+        "//src:core",
+        "@googletest//:gtest_main",
+    ],
+)

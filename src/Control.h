@@ -9,7 +9,6 @@
 #include <math.h>
 #include <stdint.h>
 #include "clock.h"
-#include <functional>
 
 /**
  * Controls take a DMX input and a clock and compute a new value. They can store state how they want.
@@ -59,11 +58,33 @@ class BufferedControl : public ValueControl<float> {
 public:
   template<typename ...WrappedControlTypeArgs>
   BufferedControl(WrappedControlTypeArgs... wrappedControlArgs) : _wrappedControl(wrappedControlArgs...) {
-//    _actualValue = _wrappedControl.value();
   }
 
-  virtual void tick(const Clock &clock, float inputValue) {
+  void tick(const Clock &clock, float inputValue) override {
     _wrappedControl.tick(clock, inputValue);
+    converge();
+    ValueControl<float>::tick(clock, inputValue);
+  }
+
+  // Without an input the wrapped control holds its default, so value()
+  // reflects the defaults until DMX data arrives.
+  void tick(const Clock &clock) override {
+    _wrappedControl.tick(clock);
+    converge();
+    ValueControl<float>::tick(clock);
+  }
+
+protected:
+  float computeNextValue(const Clock &clock, float inputValue) override {
+    return _computedValue;
+  }
+
+  float computeNextValue(const Clock &clock) override {
+    return _computedValue;
+  }
+
+private:
+  void converge() {
     _actualValue = _wrappedControl.value();
 
     if (!initialized) {
@@ -73,18 +94,11 @@ public:
       // Otherwise we converge on computed value
       _computedValue = (_computedValue - _actualValue) * .9f + _actualValue;
     }
-    ValueControl<float>::tick(clock, inputValue);
   }
-
-  virtual float computeNextValue(const Clock &clock, float inputValue) {
-    return _computedValue;
-  }
-
-private:
 
   bool initialized = false;
-  float _computedValue;
-  float _actualValue;
+  float _computedValue = 0;
+  float _actualValue = 0;
 
   WrappedControlType _wrappedControl;
 };
@@ -129,9 +143,6 @@ public:
   }
 
 private:
-
-  bool initialized = false;
-
   float _accumulatedValue;
 
   WrappedControlType _wrappedControl;
@@ -144,8 +155,6 @@ private:
 class BooleanValueControl : public ValueControl<bool> {
 protected:
   virtual bool computeNextValue(const Clock &clock, float inputValue);
-
-  bool computeNextValue(const Clock &clock) override;
 };
 
 
@@ -188,12 +197,6 @@ private:
   ValueType _minVal;
   ValueType _maxVal;
 };
-
-template
-class LinearlyInterpolatedValueControl<int>;
-
-template
-class LinearlyInterpolatedValueControl<float>;
 
 //typedef LinearlyInterpolatedValueControl<float> SmoothLinearControl;
 typedef AccumulatorControl<LinearlyInterpolatedValueControl<float>> SmoothAccumulatorControl;

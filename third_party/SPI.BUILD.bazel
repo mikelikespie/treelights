@@ -1,0 +1,19 @@
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@platformio_rules//platformio:platformio.bzl", "platformio_library")
+
+platformio_library(
+    name = "SPI",
+    src = "SPI.cpp",
+    hdr = "SPI.h",
+    visibility = ["//visibility:public"],
+)
+
+# Header-only view for IDE indexing (CLion / clangd); not part of the
+# firmware build.
+cc_library(
+    name = "SPI_clion",
+    hdrs = ["SPI.h"],
+    includes = ["."],
+    tags = ["manual"],
+    visibility = ["//visibility:public"],
+)

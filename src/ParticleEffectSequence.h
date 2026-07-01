@@ -29,8 +29,9 @@ struct Particle {
 class ParticleEffectSequence : public SequenceBase<ParticleEffectSequence> {
 public:
   ParticleEffectSequence(std::mt19937 *gen, int stripLength, const Clock &clock)
-          : SequenceBase(stripLength, clock), _particles(INITIAL_PARTICLE_BUFFER_SIZE), gen(gen),
+          : SequenceBase(stripLength, clock), gen(gen),
             _hueSliceMin(0), _hueSliceMax(0), _hueOffset(0) {
+    _particles.reserve(INITIAL_PARTICLE_BUFFER_SIZE);
     _buffer1.resize((size_t) (stripLength), RGBLinear{0, 0, 0});
     _buffer2.resize((size_t) (stripLength), RGBLinear{0, 0, 0});
   }
@@ -64,7 +65,7 @@ public:
   }
 
   void updateParticles(float deltat, float ax) {
-    boolean create_pixel = distribution(*gen) >
+    bool create_pixel = distribution(*gen) >
                            expf(generation_k() * -deltat * (fabsf(ax) * 60.0f + 0.2f) * _generationAmount.value());
 
     const float min_position = -0.4f;
@@ -125,7 +126,7 @@ public:
 //        float decay = 1.0;
 //        for (int i = 0; i <= radius; i++) {
     for (auto pixelIndex: {closestIndex, closestIndex + 1}) {
-      if (pixelIndex < 0 || pixelIndex > stripLength()) {
+      if (pixelIndex < 0 || pixelIndex >= stripLength()) {
         continue;
       }
 
@@ -151,9 +152,9 @@ public:
     }
   }
 
-  virtual void loop(Context *context) {
+  void loop(Context *context) override {
     float deltat = clock().deltaf();
-    float hueSlicePhase = std::fmod<float>(_hueSlicePhase.value() + 1.0f, 1.0f);
+    float hueSlicePhase = fmodf(_hueSlicePhase.value() + 1.0f, 1.0f);
     _hueSliceMin = hueSlicePhase - _hueSliceSizeControl.value() * .5f;
     _hueSliceMax = hueSlicePhase + _hueSliceSizeControl.value() * .5f;
 
@@ -178,7 +179,7 @@ public:
     return _buffer2[pixel].convertWithJitter(*gen);
   }
 
-  virtual const std::vector<Control *> &controls() {
+  const std::vector<Control *> &controls() override {
     return _controls;
   }
 
@@ -229,9 +230,7 @@ private:
 
     return hue;
   }
-
-  ~ParticleEffectSequence() override = default;
 };
 
 
-#endif //TREELIGHTS_SINWAVESEQUENCE_H
+#endif //TREELIGHTS_PARTICLEEFFECTSEQUENCE_H

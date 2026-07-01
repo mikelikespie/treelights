@@ -1,0 +1,5 @@
+# Overlay BUILD files for external Arduino libraries live here.
+exports_files(glob([
+    "*.BUILD.bazel",
+    "*.patch",
+]))

@@ -1,0 +1,40 @@
+diff --git a/platformio/BUILD b/platformio/BUILD
+index 0c250d3..dbc1b4e 100644
+--- a/platformio/BUILD
++++ b/platformio/BUILD
+@@ -1,3 +1,5 @@
++load("@rules_python//python:py_binary.bzl", "py_binary")
++
+ load("@py_deps//:requirements.bzl", "requirement")
+ 
+ package(
+diff --git a/platformio/platformio.bzl b/platformio/platformio.bzl
+index 0a0bcba..a0bbb6c 100644
+--- a/platformio/platformio.bzl
++++ b/platformio/platformio.bzl
+@@ -270,7 +270,7 @@ def _emit_build_action(ctx, project_dir, output_files):
+       command="\n".join(commands),
+       env={
+         # The PlatformIO binary assumes that the build tools are in the path.
+-        "PATH":"/bin:/usr/bin:/usr/local/bin:/usr/sbin:/sbin",
++        "PATH":"/bin:/usr/bin:/usr/local/bin:/opt/homebrew/bin:/usr/sbin:/sbin",
+ 
+         # Changes the Encoding to allow PlatformIO's Click to work as expected
+         # See https://github.com/mum4k/platformio_rules/issues/22
+diff --git a/platformio/platformio.ini.tmpl b/platformio/platformio.ini.tmpl
+index 99cf61e..ff54892 100644
+--- a/platformio/platformio.ini.tmpl
++++ b/platformio/platformio.ini.tmpl
+@@ -28,10 +28,9 @@ lib_deps =
+ {%- endfor %}
+ platform = {{ platform }}
+ board = {{ board }}
+-framework = 
+-  {{ framework }}
++framework = {{ framework }}
+ {%- for kwarg in environment_kwargs %}
+-  {{environment_kwargs}}
++{{ kwarg }}
+ {%- endfor %}
+ {%- if programmer == "arduino_as_isp" %}
+ upload_protocol = custom

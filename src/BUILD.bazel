@@ -1,7 +1,34 @@
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load(
     "@platformio_rules//platformio:platformio.bzl",
     "platformio_library",
     "platformio_project",
+)
+
+# Host-compilable core logic (no Arduino dependency) so //test can exercise
+# it on the development machine. SinWave/BurningFlambeos are excluded: they
+# use Teensy-only M_TWOPI.
+cc_library(
+    name = "core",
+    srcs = [
+        "Control.cpp",
+        "clock.cpp",
+    ],
+    hdrs = [
+        "Color.h",
+        "Context.h",
+        "Control.h",
+        "ExampleSequence.h",
+        "ParticleEffectSequence.h",
+        "SequenceBase.h",
+        "SoundData.h",
+        "SoundHistogramSequence.h",
+        "SoundReactiveParticleEffectSequence.h",
+        "clock.h",
+        "ledmath.h",
+    ],
+    includes = ["."],
+    visibility = ["//visibility:public"],
 )
 
 cc_library(
@@ -28,10 +55,12 @@ cc_library(
         #        "-target",
         #        "armv7-none-eabihf",
     ],
+    # IDE-indexing target only; requires Teensyduino installed locally.
+    tags = ["manual"],
     visibility = ["//visibility:public"],
     deps = [
-        "//deps/SPI:SPI_clion",
-        "//deps/TeensyDMX/src:TeensyDMX_clion",
+        "@SPI//:SPI_clion",
+        "@TeensyDMX//:TeensyDMX_clion",
     ],
 )
 
@@ -85,7 +114,7 @@ platformio_library(
 #    platform = "teensy",
 #    deps = [
 #        ":lib_headers",
-#        "//deps/SPI",
+#        "@SPI",
 #    ],
 #)
 
@@ -115,7 +144,8 @@ platformio_project(
     platform = "teensy",
     deps = [
         ":lib_headers",
-        "//deps/SPI",
+        "@SPI",
+        "@TeensyDMX",
     ],
 )
 
@@ -144,7 +174,7 @@ platformio_project(
 #    platform = "teensy",
 #    deps = [
 #        ":lib_headers",
-#        "//deps/SPI",
-#        "//deps/TeensyDMX/src:TeensyDMX",
+#        "@SPI",
+#        "@TeensyDMX",
 #    ],
 #)

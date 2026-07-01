@@ -5,6 +5,9 @@
 #ifndef TREELIGHTS_SOUNDDATA_H
 #define TREELIGHTS_SOUNDDATA_H
 
+#include <algorithm>
+#include <cmath>
+#include <cstring>
 
 static const int SOUND_BUFFER_BIN_COUNT = 512;
 
@@ -39,33 +42,20 @@ public:
     float binNextFloat = freqNext / 43.0f;
     int binNext = std::min((int)std::floor (binNextFloat), SOUND_BUFFER_BIN_COUNT - 1);
     if (binPrev == binNext || binNextFloat - binPrevFloat < 1.5f) {
-//      return 0;
-      // If we're in the last bin we don't interpolate
-//      if (binPrev == SOUND_BUFFER_BIN_COUNT - 1) {
-        return _buffer[binPrev];
-//      } else {
-//        // Linear interpolate between _buffer[binPrev] and _buffer[binPrev + 1]
-//        float interpolationRatio = (freqPrev - binPrev * 43.0f) / 43.0f;
-//        return _buffer[binPrev] * (1.0f - interpolationRatio) + _buffer[binPrev + 1] * interpolationRatio;
-//      }
+      return _buffer[binPrev];
     } else {
-//      return 1;
       float binSum = 0;
       for (int i = binPrev; i <= binNext; ++i) {
         binSum += _buffer[i];
       }
 
       return binSum;
-
     }
   }
 
   float getCombinedFrequencyRange(float minFrequency, float maxFrequency) {
-    float logMin = std::log(minFrequency);
-    float logMax = std::log(maxFrequency);
-
-    int binMin = std::min((int) (std::exp(logMin) / 43.0f), SOUND_BUFFER_BIN_COUNT - 1);
-    int binMax = std::min((int) (std::exp(logMax) / 43.0f), SOUND_BUFFER_BIN_COUNT - 1);
+    int binMin = std::min((int) (minFrequency / 43.0f), SOUND_BUFFER_BIN_COUNT - 1);
+    int binMax = std::min((int) (maxFrequency / 43.0f), SOUND_BUFFER_BIN_COUNT - 1);
 
     float binSum = 0;
     for (int i = binMin; i <= binMax; ++i) {

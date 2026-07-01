@@ -1,0 +1,31 @@
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@platformio_rules//platformio:platformio.bzl", "platformio_library")
+
+platformio_library(
+    name = "TeensyDMX",
+    src = "TeensyDMX.cpp",
+    hdr = "TeensyDMX.h",
+    add_hdrs = glob(
+        ["**/*.h"],
+        exclude = ["TeensyDMX.h"],
+    ),
+    add_srcs = glob(
+        ["**/*.cpp"],
+        exclude = [
+            "TeensyDMX.cpp",
+            # Upstream's dev sketch; defines setup()/loop().
+            "main.cpp",
+        ],
+    ),
+    visibility = ["//visibility:public"],
+)
+
+# Header-only view for IDE indexing (CLion / clangd); not part of the
+# firmware build.
+cc_library(
+    name = "TeensyDMX_clion",
+    hdrs = glob(["**/*.h"]),
+    includes = ["."],
+    tags = ["manual"],
+    visibility = ["//visibility:public"],
+)

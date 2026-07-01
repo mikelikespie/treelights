@@ -44,3 +44,10 @@ ValueType LinearlyInterpolatedValueControl<ValueType>::computeNextValue(const Cl
     return inputValue * (_maxVal - _minVal) + _minVal;
 }
 
+template class ValueControl<int>;
+template class ValueControl<float>;
+template class ValueControl<bool>;
+
+template class LinearlyInterpolatedValueControl<int>;
+template class LinearlyInterpolatedValueControl<float>;
+

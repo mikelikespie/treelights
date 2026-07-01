@@ -5,34 +5,11 @@
 #ifndef TREELIGHTS_COLOR_H_H
 #define TREELIGHTS_COLOR_H_H
 
-
+#include <stdint.h>
 
 #include <random>
 #include <cmath>
 #include <algorithm>
-
-#include <Arduino.h>
-#include <usb_serial.h>
-
-#include <core_pins.h>
-//
-//#ifdef round
-//#undef round
-//#endif
-//
-//#ifdef abs
-//#undef abs
-//#endif
-//
-//#ifdef min
-//#undef min
-//#endif
-//#ifdef max
-//#undef max
-//#endif
-//
-
-#include <stdint.h>
 
 #ifdef abs
 #undef abs
@@ -46,8 +23,6 @@ struct ARGB {
 
 template <typename Generator>
 inline ARGB adjustLinearFloatColor(float r, float g, float b, Generator *rnd = nullptr);
-
-
 
 template  <typename Generator>
 uint8_t convertTo8bitWithJitter(float c, Generator *rnd) ;
@@ -135,10 +110,6 @@ struct HSV {
     }
 };
 
-//static const float _gamma = 2.4f;
-//static const float _invGamma= 2.4f;
-
-
 template <typename Generator>
 inline ARGB adjustLinearFloatColor(float r, float g, float b, Generator *rnd) {
     const float threshold = 2;
@@ -161,8 +132,6 @@ inline ARGB adjustLinearFloatColor(float r, float g, float b, Generator *rnd) {
         r *= actual_mult;
         g *= actual_mult;
         b *= actual_mult;
-    } else {
-//            a = 0;
     }
     if (rnd == nullptr) {
         return ARGB {a, uint8_t(roundf(r * 255.0f)), uint8_t(roundf(g * 255.0f)), uint8_t(roundf(b * 255.0f))};

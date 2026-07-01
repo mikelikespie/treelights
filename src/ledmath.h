@@ -5,6 +5,9 @@
 #ifndef TREELIGHTS_LEDMATH_H
 #define TREELIGHTS_LEDMATH_H
 
+#include <cmath>
+
+// Triangle wave with period 1: 0 at integers, 1 at half-integers.
 static inline float sawtooth(float x) {
   return fabsf((roundf(x) - x)) * 2;
 }

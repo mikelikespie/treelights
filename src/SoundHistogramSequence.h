@@ -77,7 +77,7 @@ public:
             actualValue * _gain.value()};
   }
 
-  virtual const std::vector<Control *> &controls() {
+  const std::vector<Control *> &controls() override {
     return _controls;
   }
 

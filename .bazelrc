@@ -1,0 +1,7 @@
+# Host toolchain settings (tests, IDE-indexing libs). The firmware build sets
+# its own flags via platformio_project build_flags.
+build --cxxopt=-std=c++17
+test --test_output=errors
+
+# Run tests under AddressSanitizer: bazel test --config=asan //test:all
+build:asan --copt=-fsanitize=address --linkopt=-fsanitize=address --copt=-g
