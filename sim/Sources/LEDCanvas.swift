@@ -40,7 +40,7 @@ final class MetalLEDView: NSView {
     metalLayer.pixelFormat = .rgba16Float
     metalLayer.framebufferOnly = false
     metalLayer.wantsExtendedDynamicRangeContent = true
-    metalLayer.colorspace = CGColorSpace(name: CGColorSpace.extendedLinearSRGB)
+    metalLayer.colorspace = CGColorSpace(name: CGColorSpace.extendedLinearDisplayP3)
     metalLayer.backgroundColor = .black
     return metalLayer
   }

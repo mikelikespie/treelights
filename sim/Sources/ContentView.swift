@@ -61,6 +61,7 @@ struct ContentView: View {
             Slider(value: $model.exposure, in: 0.4...8)
           }
           Toggle("HDR glow (EDR)", isOn: $model.hdrEnabled)
+          Toggle("Wide gamut (P3)", isOn: $model.wideGamut)
           LabeledContent("Headroom") {
             Text(String(format: "×%.1f", model.headroom))
               .monospacedDigit()

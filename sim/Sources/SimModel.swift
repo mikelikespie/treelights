@@ -35,6 +35,10 @@ final class SimModel {
   var controlValues = [Double](repeating: 0.5, count: 16)
   var exposure = 2.2
   var hdrEnabled = true
+  // Interpret LED channels as Display P3 primaries instead of sRGB. Real
+  // APA102 emitters are narrowband (more saturated than P3), so wide gamut
+  // is the closer rendering on XDR panels.
+  var wideGamut = true
   var audioMode = AudioMode.synthetic
 
   @ObservationIgnored private let audio = AudioSource()
@@ -173,6 +177,11 @@ final class SimModel {
     let drawableSize = CGSize(width: width, height: height)
     if layer.drawableSize != drawableSize {
       layer.drawableSize = drawableSize
+    }
+    let wantedColorSpace =
+      wideGamut ? CGColorSpace.extendedLinearDisplayP3 : CGColorSpace.extendedLinearSRGB
+    if layer.colorspace?.name != wantedColorSpace {
+      layer.colorspace = CGColorSpace(name: wantedColorSpace)
     }
     guard let drawable = layer.nextDrawable() else { return }
     drawable.texture.replace(
