@@ -1,6 +1,7 @@
 # Host toolchain settings (tests, IDE-indexing libs). The firmware build sets
 # its own flags via platformio_project build_flags.
 build --cxxopt=-std=c++17
+build --host_cxxopt=-std=c++17
 test --test_output=errors
 
 # libc++ everywhere (project policy): identical std::*_distribution streams on
@@ -10,6 +11,10 @@ common --enable_platform_specific_config
 build:linux --repo_env=CC=clang
 build:linux --cxxopt=-stdlib=libc++
 build:linux --linkopt=-stdlib=libc++
+# Exec-config tools (genrule renderers like gen_test_wav/simrender) must
+# follow the same policy or their output diverges from target-config builds.
+build:linux --host_cxxopt=-stdlib=libc++
+build:linux --host_linkopt=-stdlib=libc++
 
 # Run tests under AddressSanitizer: bazel test --config=asan //test:all
 build:asan --copt=-fsanitize=address --linkopt=-fsanitize=address --copt=-g

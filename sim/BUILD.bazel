@@ -120,7 +120,7 @@ genrule(
 
 cc_test(
     name = "snapshot_test",
-    size = "medium",
+    size = "small",
     srcs = ["snapshot_test.cc"],
     data = [
         "testdata/snapshots.textproto",

@@ -31,14 +31,19 @@ std::string resolvePath(const std::string &path, const std::vector<std::string> 
 
 }  // namespace
 
-bool RunRenderConfig(const treelights::sim::RenderConfig &config,
-                     const std::vector<std::string> &searchRoots, RenderOutput *out,
-                     std::string *error) {
+bool RunRenderConfigStreaming(const treelights::sim::RenderConfig &config,
+                              const std::vector<std::string> &searchRoots,
+                              RenderInfo *info, const FrameSink &sink,
+                              std::string *error) {
   using treelights::sim::RenderConfig;
 
   const SimFixture fixture =
       config.fixture() == RenderConfig::BALL ? SimFixture::kBall : SimFixture::kBars;
   const int stepMillis = config.step_millis() > 0 ? config.step_millis() : 16;
+  if (stepMillis > 65535) {  // APNG frame-delay field is 16 bits
+    if (error) *error = "step_millis out of range (max 65535)";
+    return false;
+  }
   const float exposure = config.exposure() > 0 ? config.exposure() : 2.2f;
   const float headroom = config.headroom() > 0 ? config.headroom() : 1.0f;
   const float wavGain = config.wav_gain() > 0 ? config.wav_gain() : 4.0f;
@@ -69,15 +74,16 @@ bool RunRenderConfig(const treelights::sim::RenderConfig &config,
   }
 
   SimRenderer renderer(fixture);
-  out->width = renderer.width();
-  out->height = renderer.height();
-  out->frameDelayMillis = stepMillis;
-  out->frames.clear();
 
   const long stillFrame = (long) llround(config.at_seconds() * 1000.0 / stepMillis);
   const long videoFrames =
       (long) llround(config.video_duration_seconds() * 1000.0 / stepMillis);
   const long lastFrame = stillFrame + (videoFrames > 0 ? videoFrames - 1 : 0);
+
+  info->width = renderer.width();
+  info->height = renderer.height();
+  info->frameDelayMillis = stepMillis;
+  info->frameCount = (int) (lastFrame - stillFrame + 1);
 
   float bins[SOUND_BUFFER_BIN_COUNT];
   RenderParams params;
@@ -85,6 +91,7 @@ bool RunRenderConfig(const treelights::sim::RenderConfig &config,
   params.headroom = headroom;
   params.pitch = config.pitch();
 
+  std::vector<uint8_t> frame8((size_t) renderer.width() * renderer.height() * 3);
   for (long frame = 0; frame <= lastFrame; frame++) {
     const double t = frame * stepMillis / 1000.0;
     const float *frameBins = nullptr;
@@ -99,14 +106,35 @@ bool RunRenderConfig(const treelights::sim::RenderConfig &config,
 
     if (frame >= stillFrame) {
       params.yaw = config.yaw() + config.yaw_rate() * (float) t;
-      out->frames.push_back(
-          renderer.renderSRGB8(engine.leds(), engine.totalLedCount(), params));
+      renderer.composite(engine.leds(), engine.totalLedCount(), params.yaw,
+                         params.pitch);
+      renderer.toneMapSRGB8(params.exposure, frame8.data());
+      if (!sink(frame8.data(), error)) {
+        return false;
+      }
     }
   }
+  return true;
+}
 
-  if (out->frames.empty()) {
+bool RunRenderConfig(const treelights::sim::RenderConfig &config,
+                     const std::vector<std::string> &searchRoots, RenderOutput *out,
+                     std::string *error) {
+  RenderInfo info;
+  out->frames.clear();
+  bool ok = RunRenderConfigStreaming(
+      config, searchRoots, &info,
+      [&](const uint8_t *rgb, std::string *) {
+        out->frames.emplace_back(rgb, rgb + (size_t) info.width * info.height * 3);
+        return true;
+      },
+      error);
+  out->width = info.width;
+  out->height = info.height;
+  out->frameDelayMillis = info.frameDelayMillis;
+  if (ok && out->frames.empty()) {
     if (error) *error = "no frames rendered";
     return false;
   }
-  return true;
+  return ok;
 }

@@ -52,7 +52,11 @@ TEST(SnapshotTest, MatchesGoldens) {
 
     RenderOutput output;
     std::string error;
-    ASSERT_TRUE(RunRenderConfig(snapshotCase.config(), {"."}, &output, &error)) << error;
+    // Same roots the CLI uses (config-dir relative), so a suite that
+    // regenerates goldens is always testable too.
+    ASSERT_TRUE(RunRenderConfig(snapshotCase.config(), {".", "sim/testdata"}, &output,
+                                &error))
+        << error;
     ASSERT_EQ(output.frames.size(), 1u)
         << "snapshot cases must render stills (video_duration_seconds unset)";
 

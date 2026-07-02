@@ -44,6 +44,10 @@ std::vector<uint8_t> ihdrData(int width, int height) {
 /// Filter-0 scanlines, deflate-compressed.
 bool compressFrame(const uint8_t *rgb, int width, int height,
                    std::vector<uint8_t> *compressed, std::string *error) {
+  if (width <= 0 || height <= 0) {
+    if (error) *error = "invalid image dimensions";
+    return false;
+  }
   std::vector<uint8_t> raw((size_t) height * (1 + (size_t) width * 3));
   for (int y = 0; y < height; y++) {
     uint8_t *row = &raw[(size_t) y * (1 + (size_t) width * 3)];
@@ -97,49 +101,118 @@ bool WritePng(const std::string &path, const uint8_t *rgb, int width, int height
 
 bool WriteApng(const std::string &path, const std::vector<std::vector<uint8_t>> &frames,
                int width, int height, int delayMillis, std::string *error) {
-  if (frames.empty()) {
-    if (error) *error = "no frames";
+  ApngWriter writer;
+  if (!writer.begin(path, width, height, (int) frames.size(), delayMillis, error)) {
+    return false;
+  }
+  for (const auto &frame : frames) {
+    if (!writer.addFrame(frame.data(), error)) {
+      return false;
+    }
+  }
+  return writer.finish(error);
+}
+
+ApngWriter::~ApngWriter() {
+  if (_file != nullptr) {
+    fclose((FILE *) _file);
+  }
+}
+
+bool ApngWriter::begin(const std::string &path, int width, int height, int frameCount,
+                       int delayMillis, std::string *error) {
+  if (frameCount <= 0 || width <= 0 || height <= 0) {
+    if (error) *error = "invalid APNG dimensions/frame count";
+    return false;
+  }
+  // The fcTL delay numerator is a 16-bit field; reject rather than wrap.
+  if (delayMillis < 0 || delayMillis > 65535) {
+    if (error) *error = "APNG frame delay out of range (0..65535 ms)";
     return false;
   }
 
+  FILE *f = fopen(path.c_str(), "wb");
+  if (f == nullptr) {
+    if (error) *error = "cannot open for writing: " + path;
+    return false;
+  }
+  _file = f;
+  _width = width;
+  _height = height;
+  _frameCount = frameCount;
+  _delayMillis = delayMillis;
+  _framesWritten = 0;
+  _sequence = 0;
+
   std::vector<uint8_t> out(kPngSignature, kPngSignature + 8);
   appendChunk(&out, "IHDR", ihdrData(width, height));
-
   std::vector<uint8_t> actl;
-  appendU32(&actl, (uint32_t) frames.size());
+  appendU32(&actl, (uint32_t) frameCount);
   appendU32(&actl, 0);  // loop forever
   appendChunk(&out, "acTL", actl);
+  if (fwrite(out.data(), 1, out.size(), f) != out.size()) {
+    if (error) *error = "short write";
+    return false;
+  }
+  return true;
+}
 
-  uint32_t sequence = 0;
-  for (size_t i = 0; i < frames.size(); i++) {
-    std::vector<uint8_t> fctl;
-    appendU32(&fctl, sequence++);
-    appendU32(&fctl, (uint32_t) width);
-    appendU32(&fctl, (uint32_t) height);
-    appendU32(&fctl, 0);  // x offset
-    appendU32(&fctl, 0);  // y offset
-    appendU16(&fctl, (uint16_t) delayMillis);
-    appendU16(&fctl, 1000);  // delay denominator
-    fctl.push_back(0);       // dispose: none
-    fctl.push_back(0);       // blend: source
-    appendChunk(&out, "fcTL", fctl);
-
-    std::vector<uint8_t> compressed;
-    if (!compressFrame(frames[i].data(), width, height, &compressed, error)) {
-      return false;
-    }
-    if (i == 0) {
-      appendChunk(&out, "IDAT", compressed);
-    } else {
-      std::vector<uint8_t> fdat;
-      appendU32(&fdat, sequence++);
-      fdat.insert(fdat.end(), compressed.begin(), compressed.end());
-      appendChunk(&out, "fdAT", fdat);
-    }
+bool ApngWriter::addFrame(const uint8_t *rgb, std::string *error) {
+  if (_file == nullptr || _framesWritten >= _frameCount) {
+    if (error) *error = "APNG writer misuse (not begun or too many frames)";
+    return false;
   }
 
+  std::vector<uint8_t> out;
+  std::vector<uint8_t> fctl;
+  appendU32(&fctl, _sequence++);
+  appendU32(&fctl, (uint32_t) _width);
+  appendU32(&fctl, (uint32_t) _height);
+  appendU32(&fctl, 0);  // x offset
+  appendU32(&fctl, 0);  // y offset
+  appendU16(&fctl, (uint16_t) _delayMillis);
+  appendU16(&fctl, 1000);  // delay denominator
+  fctl.push_back(0);       // dispose: none
+  fctl.push_back(0);       // blend: source
+  appendChunk(&out, "fcTL", fctl);
+
+  std::vector<uint8_t> compressed;
+  if (!compressFrame(rgb, _width, _height, &compressed, error)) {
+    return false;
+  }
+  if (_framesWritten == 0) {
+    appendChunk(&out, "IDAT", compressed);
+  } else {
+    std::vector<uint8_t> fdat;
+    appendU32(&fdat, _sequence++);
+    fdat.insert(fdat.end(), compressed.begin(), compressed.end());
+    appendChunk(&out, "fdAT", fdat);
+  }
+  _framesWritten++;
+
+  if (fwrite(out.data(), 1, out.size(), (FILE *) _file) != out.size()) {
+    if (error) *error = "short write";
+    return false;
+  }
+  return true;
+}
+
+bool ApngWriter::finish(std::string *error) {
+  if (_file == nullptr) {
+    if (error) *error = "APNG writer not begun";
+    return false;
+  }
+  if (_framesWritten != _frameCount) {
+    if (error) *error = "APNG frame count mismatch";
+    return false;
+  }
+  std::vector<uint8_t> out;
   appendChunk(&out, "IEND", {});
-  return writeFile(path, out, error);
+  bool ok = fwrite(out.data(), 1, out.size(), (FILE *) _file) == out.size();
+  ok = fclose((FILE *) _file) == 0 && ok;
+  _file = nullptr;
+  if (!ok && error) *error = "short write / close failed";
+  return ok;
 }
 
 bool ReadPng(const std::string &path, std::vector<uint8_t> *rgb, int *width, int *height,
@@ -172,6 +245,10 @@ bool ReadPng(const std::string &path, std::vector<uint8_t> *rgb, int *width, int
     const uint8_t *data = &bytes[pos + 8];
     if (pos + 12 + len > bytes.size()) break;
     if (memcmp(type, "IHDR", 4) == 0) {
+      if (len < 13) {
+        if (error) *error = "malformed IHDR chunk: " + path;
+        return false;
+      }
       w = (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
       h = (data[4] << 24) | (data[5] << 16) | (data[6] << 8) | data[7];
       if (data[8] != 8 || data[9] != 2 || data[12] != 0) {

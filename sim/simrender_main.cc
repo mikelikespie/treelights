@@ -65,26 +65,77 @@ bool parseTextproto(const std::string &path, Proto *proto) {
   return true;
 }
 
+/// Streams frames straight into the PNG/APNG writer so long clips never
+/// accumulate in memory.
 bool renderToFile(const treelights::sim::RenderConfig &config,
                   const std::vector<std::string> &roots, const std::string &outPath) {
-  RenderOutput output;
+  RenderInfo info;
+  ApngWriter apng;
+  bool apngStarted = false;
+  std::vector<uint8_t> still;
   std::string error;
-  if (!RunRenderConfig(config, roots, &output, &error)) {
+
+  bool ok = RunRenderConfigStreaming(
+      config, roots, &info,
+      [&](const uint8_t *rgb, std::string *sinkError) {
+        if (info.frameCount == 1) {
+          still.assign(rgb, rgb + (size_t) info.width * info.height * 3);
+          return true;
+        }
+        if (!apngStarted) {
+          if (!apng.begin(outPath, info.width, info.height, info.frameCount,
+                          info.frameDelayMillis, sinkError)) {
+            return false;
+          }
+          apngStarted = true;
+        }
+        return apng.addFrame(rgb, sinkError);
+      },
+      &error);
+  if (!ok) {
     fprintf(stderr, "render failed: %s\n", error.c_str());
     return false;
   }
-  bool ok = output.frames.size() == 1
-                ? WritePng(outPath, output.frames[0].data(), output.width, output.height,
-                           &error)
-                : WriteApng(outPath, output.frames, output.width, output.height,
-                            output.frameDelayMillis, &error);
+
+  ok = info.frameCount == 1
+           ? WritePng(outPath, still.data(), info.width, info.height, &error)
+           : apng.finish(&error);
   if (!ok) {
     fprintf(stderr, "write failed: %s\n", error.c_str());
     return false;
   }
-  printf("%s: %dx%d, %zu frame(s)\n", outPath.c_str(), output.width, output.height,
-         output.frames.size());
+  printf("%s: %dx%d, %d frame(s)\n", outPath.c_str(), info.width, info.height,
+         info.frameCount);
   return true;
+}
+
+bool fileExists(const std::string &path) {
+  struct stat st;
+  return stat(path.c_str(), &st) == 0;
+}
+
+/// `bazel run` chdirs into the runfiles tree; resolve user-supplied paths
+/// against the invocation directory (BUILD_WORKING_DIRECTORY) as well.
+std::string resolveInputPath(const std::string &path) {
+  if (path.empty() || path[0] == '/' || fileExists(path)) {
+    return path;
+  }
+  const char *workingDir = getenv("BUILD_WORKING_DIRECTORY");
+  if (workingDir != nullptr) {
+    std::string candidate = std::string(workingDir) + "/" + path;
+    if (fileExists(candidate)) {
+      return candidate;
+    }
+  }
+  return path;
+}
+
+std::string resolveOutputPath(const std::string &path) {
+  if (path.empty() || path[0] == '/') {
+    return path;
+  }
+  const char *workingDir = getenv("BUILD_WORKING_DIRECTORY");
+  return workingDir != nullptr ? std::string(workingDir) + "/" + path : path;
 }
 
 }  // namespace
@@ -125,6 +176,11 @@ int main(int argc, char **argv) {
     }
     suitePath = std::string(workspace) + "/sim/testdata/snapshots.textproto";
     outDir = std::string(workspace) + "/sim/testdata/golden";
+  } else {
+    configPath = resolveInputPath(configPath);
+    suitePath = resolveInputPath(suitePath);
+    outPath = resolveOutputPath(outPath);
+    outDir = resolveOutputPath(outDir);
   }
 
   if (!suitePath.empty()) {
@@ -137,6 +193,7 @@ int main(int argc, char **argv) {
     makeDirs(outDir);
     std::vector<std::string> roots = {dirname(suitePath)};
     if (!wavRoot.empty()) roots.push_back(wavRoot);
+    if (const char *wd = getenv("BUILD_WORKING_DIRECTORY")) roots.push_back(wd);
     for (const auto &snapshotCase : suite.cases()) {
       if (!renderToFile(snapshotCase.config(), roots,
                         outDir + "/" + snapshotCase.name() + ".png")) {
@@ -158,5 +215,6 @@ int main(int argc, char **argv) {
   if (!parseTextproto(configPath, &config)) return 1;
   std::vector<std::string> roots = {dirname(configPath)};
   if (!wavRoot.empty()) roots.push_back(wavRoot);
+  if (const char *wd = getenv("BUILD_WORKING_DIRECTORY")) roots.push_back(wd);
   return renderToFile(config, roots, outPath) ? 0 : 1;
 }

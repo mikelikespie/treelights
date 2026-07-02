@@ -115,6 +115,8 @@ bool ReadWav(const std::string &path, AudioData *out, std::string *error) {
     return false;
   }
 
+  constexpr int kTeensyRate = 44100;
+
   const int bytesPerSample = bitsPerSample / 8;
   const size_t frameBytes = (size_t) bytesPerSample * channels;
   const size_t frameCount = dataLen / frameBytes;
@@ -138,6 +140,25 @@ bool ReadWav(const std::string &path, AudioData *out, std::string *error) {
       }
     }
     out->samples[i] = sum / channels;
+  }
+
+  // The FFT consumers assume the Teensy bin layout (44100/1024 = ~43 Hz per
+  // bin, hardcoded in SoundData.h), so resample anything else to 44.1 kHz.
+  // Deterministic linear interpolation is plenty for driving visuals.
+  if (out->sampleRate != kTeensyRate && !out->samples.empty()) {
+    const double ratio = (double) out->sampleRate / kTeensyRate;
+    const size_t resampledCount = (size_t) (out->samples.size() / ratio);
+    std::vector<float> resampled(resampledCount);
+    for (size_t i = 0; i < resampledCount; i++) {
+      const double src = i * ratio;
+      const size_t i0 = (size_t) src;
+      const double frac = src - i0;
+      const float a = out->samples[i0];
+      const float b = i0 + 1 < out->samples.size() ? out->samples[i0 + 1] : a;
+      resampled[i] = (float) (a + (b - a) * frac);
+    }
+    out->samples = std::move(resampled);
+    out->sampleRate = kTeensyRate;
   }
   return true;
 }
